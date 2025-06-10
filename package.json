@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@farcaster/frame-sdk": "^0.0.61",
     "@privy-io/react-auth": "^2.14.1",
     "@privy-io/wagmi": "^1.0.3",
     "@radix-ui/react-slot": "^1.2.3",
