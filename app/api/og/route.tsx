@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         >
           <h1
             style={{
-              fontSize: "64px",
+              fontSize: "72px",
               fontWeight: "bold",
               margin: "0",
               marginBottom: "20px",
@@ -38,12 +38,23 @@ export async function GET(request: NextRequest) {
           </h1>
           <p
             style={{
-              fontSize: "24px",
+              fontSize: "28px",
               margin: "0",
-              opacity: 0.9,
+              marginBottom: "10px",
+              opacity: 0.95,
             }}
           >
-            Farcaster Mini App
+            Crypto-Native Marketplace
+          </p>
+          <p
+            style={{
+              fontSize: "20px",
+              margin: "0",
+              marginBottom: "40px",
+              opacity: 0.8,
+            }}
+          >
+            Built for the Farcaster community
           </p>
           <div
             style={{
@@ -51,10 +62,10 @@ export async function GET(request: NextRequest) {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              marginTop: "40px",
-              padding: "16px 32px",
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
-              borderRadius: "12px",
+              marginTop: "20px",
+              padding: "20px 40px",
+              backgroundColor: "rgba(255, 255, 255, 0.15)",
+              borderRadius: "16px",
               border: "2px solid rgba(255, 255, 255, 0.3)",
             }}
           >
@@ -62,9 +73,18 @@ export async function GET(request: NextRequest) {
               style={{
                 fontSize: "18px",
                 margin: "0",
+                marginBottom: "8px",
               }}
             >
-              Connect Wallet • Explore • Build
+              💰 Buy & Sell Digital Products
+            </p>
+            <p
+              style={{
+                fontSize: "18px",
+                margin: "0",
+              }}
+            >
+              🚀 Crypto Native • Community Driven
             </p>
           </div>
         </div>

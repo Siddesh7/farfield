@@ -9,16 +9,6 @@ export default function Home() {
   const { address } = useAccount();
   const { isSDKLoaded, context } = useMiniApp();
 
-  // Debug logging
-  console.log("Page render state:", {
-    ready,
-    authenticated,
-    isSDKLoaded,
-    hasContext: !!context,
-    address,
-  });
-
-  // Show loading while Privy or SDK are not ready
   if (!ready) {
     return (
       <div className="flex items-center justify-center min-h-screen">
