@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.828.0",
+    "@aws-sdk/s3-request-presigner": "^3.828.0",
     "@farcaster/frame-sdk": "^0.0.61",
     "@privy-io/react-auth": "^2.14.1",
     "@privy-io/wagmi": "^1.0.3",
