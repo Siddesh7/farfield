@@ -30,10 +30,26 @@ export default function Home() {
 
   useEffect(() => {
     if (user) {
-      fetch("/api/user/upsert", {
+      fetch("/api/user/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(user),
+        body: JSON.stringify({
+          privyId: user.id,
+          farcasterFid: user.farcaster?.fid,
+          farcaster: {
+            username: user.farcaster?.username,
+            displayName: user.farcaster?.displayName,
+            bio: user.farcaster?.bio,
+            pfp: user.farcaster?.pfp,
+            ownerAddress: user.farcaster?.ownerAddress,
+          },
+          wallet: {
+            address: user.wallet?.address,
+            chainType: user.wallet?.chainType,
+            walletClientType: user.wallet?.walletClientType,
+            connectorType: user.wallet?.connectorType,
+          },
+        }),
       });
     }
   }, [user]);
