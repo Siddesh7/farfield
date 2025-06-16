@@ -94,6 +94,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       <PrivyProvider
         appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
         clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
+        config={{
+          loginMethods: ["farcaster", "wallet"],
+        }}
       >
         <QueryClientProvider client={queryClient}>
           <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
