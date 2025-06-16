@@ -28,6 +28,16 @@ export default function Home() {
     }
   }, [ready, authenticated, initLoginToFrame, loginToFrame]);
 
+  useEffect(() => {
+    if (user) {
+      fetch("/api/user/upsert", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(user),
+      });
+    }
+  }, [user]);
+
   if (!ready) {
     return (
       <div className="flex items-center justify-center min-h-screen">
