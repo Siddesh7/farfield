@@ -9,6 +9,7 @@ import { http } from "wagmi";
 
 import { sdk } from "@farcaster/frame-sdk";
 import { createContext, useContext, useEffect, useState } from "react";
+import { GlobalContextProvider } from "@/context/global-context";
 
 // Mini App Context
 const MiniAppContext = createContext<{
@@ -90,18 +91,20 @@ const wagmiConfig = createConfig({
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <MiniAppProvider>
-      <PrivyProvider
-        appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
-        clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
-        config={{
-          loginMethods: ["farcaster", "wallet"],
-        }}
-      >
-        <QueryClientProvider client={queryClient}>
-          <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
-        </QueryClientProvider>
-      </PrivyProvider>
-    </MiniAppProvider>
+    <GlobalContextProvider>
+      <MiniAppProvider>
+        <PrivyProvider
+          appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
+          clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
+          config={{
+            loginMethods: ["farcaster"],
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <WagmiProvider config={wagmiConfig}>{children}</WagmiProvider>
+          </QueryClientProvider>
+        </PrivyProvider>
+      </MiniAppProvider>
+    </GlobalContextProvider>
   );
 }
