@@ -1,0 +1,1 @@
+export type ModulesType = 'home' | 'profile' | 'cart' | 'add-product' | 'reminder';
