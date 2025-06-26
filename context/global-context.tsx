@@ -1,5 +1,5 @@
+import { ModulesType } from "@/lib/types/global";
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import { ModulesType } from "@/types/global";
 
 interface GlobalContextType {
   activeModule: ModulesType;

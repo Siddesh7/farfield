@@ -11,7 +11,7 @@ import React from "react";
 const BottomNavigation = () => {
   const { activeModule, setActiveModule } = useGlobalContext();
   return (
-    <div className="flex justify-between fixed bottom-0 w-full px-10 py-3 ">
+    <div className="flex justify-between fixed bottom-0 w-full px-10 py-3 z-99 bg-white">
       <HomeIcon
         width={28}
         isActive={activeModule === "home"}

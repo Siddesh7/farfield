@@ -8,12 +8,17 @@ import { LoginPage } from "@/modules/login";
 import { useAccount } from "wagmi";
 import { ProfilePage } from "@/modules/profile";
 import BottomNavigation from "@/components/bottom-navigation";
+import { useGlobalContext } from "@/context/global-context";
+import HomePage from "@/modules/home/home-page";
+import HeaderSection from "@/components/header-section";
 
 export default function Home() {
   const { ready, authenticated, logout, login, user, linkWallet } = usePrivy();
   const { isSDKLoaded } = useMiniApp();
   const { initLoginToFrame, loginToFrame } = useLoginToFrame();
   const { address, isConnected } = useAccount();
+
+  const { activeModule, setActiveModule } = useGlobalContext();
 
   useEffect(() => {
     console.log("First useEFfect", ready, authenticated);
@@ -79,13 +84,25 @@ export default function Home() {
     );
   }
 
+  if (!authenticated || !isConnected) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="max-w-md mx-auto">
+          <LoginPage />
+        </div>
+      </div>
+    );
+  }
+
+  // User is authenticated and wallet is connected
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      <HeaderSection />
       <div className="max-w-md mx-auto">
-        <LoginPage />
-        {isConnected && <ProfilePage />}
+        {activeModule === 'home' && <HomePage />}
+        {activeModule === 'profile' && <ProfilePage />}
+        {/* Add other modules/components as needed */}
       </div>
-
       <BottomNavigation />
     </div>
   );
