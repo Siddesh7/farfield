@@ -10,12 +10,13 @@ export interface IUser extends Document {
     bio?: string;
     pfp?: string;
   };
-  wallet: {
+  wallets: Array<{
     address: string;
-    chainType: string;
-    walletClientType: string;
-    connectorType: string;
-  };
+    chainType?: string;
+    walletClientType?: string;
+    connectorType?: string;
+    isPrimary?: boolean;
+  }>;
 }
 
 // Mongoose Schema
@@ -39,12 +40,15 @@ const UserSchema = new Schema<IUser>(
       bio: { type: String, maxlength: 500 },
       pfp: { type: String },
     },
-    wallet: {
-      address: { type: String, required: true },
-      chainType: { type: String, required: true },
-      walletClientType: { type: String, required: true },
-      connectorType: { type: String, required: true },
-    },
+    wallets: [
+      {
+        address: { type: String, required: true },
+        chainType: { type: String },
+        walletClientType: { type: String },
+        connectorType: { type: String },
+        isPrimary: { type: Boolean, default: false },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -52,12 +56,6 @@ const UserSchema = new Schema<IUser>(
     toObject: { virtuals: true },
   }
 );
-
-// Indexes
-UserSchema.index({ privyId: 1 }, { unique: true });
-UserSchema.index({ farcasterFid: 1 }, { unique: true });
-UserSchema.index({ "farcaster.username": 1 }, { unique: true });
-UserSchema.index({ "wallet.address": 1 });
 
 // Methods
 UserSchema.methods.toPublicJSON = function () {
@@ -76,15 +74,19 @@ UserSchema.statics.findByFarcasterFid = function (farcasterFid: number) {
 };
 
 UserSchema.statics.findByWalletAddress = function (address: string) {
-  return this.findOne({ "wallet.address": address });
+  return this.findOne({ "wallets.address": address });
 };
 
 UserSchema.statics.findByUsername = function (username: string) {
   return this.findOne({ "farcaster.username": username });
 };
 
+// Force model recreation if schema changed
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
 // Export the model
-export const User =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

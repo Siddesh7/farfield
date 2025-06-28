@@ -8,7 +8,6 @@ export {
 // Validation utilities
 export {
   RequestValidator,
-  parseAndValidateBody,
   parseQueryParams,
   validatePagination,
 } from "./utils/validation";
