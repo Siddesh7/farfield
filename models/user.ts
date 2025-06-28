@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { UserResponse } from "@/lib/types/user";
 
 export interface IUser extends Document {
   privyId: string;
@@ -17,6 +18,7 @@ export interface IUser extends Document {
     connectorType?: string;
     isPrimary?: boolean;
   }>;
+  toPublicJSON(): UserResponse;
 }
 
 // Mongoose Schema
