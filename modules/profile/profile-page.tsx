@@ -1,5 +1,5 @@
 import { usePrivy } from "@privy-io/react-auth";
-import { ProfileCard } from "@/components/common";
+import { ProfileCard, WalletSyncStatus } from "@/components/common";
 import { LoadingState } from "@/components/ui/loading-spinner";
 import { useUserProfileApi } from "@/lib/hooks/use-api-state";
 import { ErrorBoundary } from "@/components/ui/error-display";
@@ -32,26 +32,10 @@ const ProfilePage = () => {
     <LoadingState loading={!ready} text="Loading Privy...">
       <div className="p-4">
         {user && (
-          <div className="mb-6">
+          <div className="mb-6 space-y-4">
             <ProfileCard user={user} variant="full" />
+            <WalletSyncStatus variant="full" />
           </div>
-        )}
-
-        {authenticated && (
-          <LoadingState loading={profileLoading} text="Loading profile...">
-            <ErrorBoundary error={profileError} onRetry={fetchProfile}>
-              {profile && (
-                <div className="bg-white rounded-lg shadow-sm border p-4">
-                  <h2 className="text-lg font-semibold mb-4">
-                    Server Profile Data
-                  </h2>
-                  <pre className="text-sm bg-gray-50 p-3 rounded overflow-auto">
-                    {JSON.stringify(profile, null, 2)}
-                  </pre>
-                </div>
-              )}
-            </ErrorBoundary>
-          </LoadingState>
         )}
       </div>
     </LoadingState>

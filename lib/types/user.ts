@@ -40,7 +40,7 @@ export interface UserRegistrationRequest {
     bio?: string;
     pfp?: string;
   };
-  wallet: {
+  wallet?: {
     address: string;
     chainType?: string;
     walletClientType?: string;

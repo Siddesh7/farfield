@@ -11,6 +11,7 @@ import BottomNavigation from "@/components/layout/bottom-navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useApiState } from "@/lib/hooks/use-api-state";
 import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
+import { useWalletSync } from "@/lib/hooks/use-wallet-sync";
 
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
@@ -19,6 +20,9 @@ export default function Home() {
   const { isConnected } = useAccount();
   const { post } = useAuthenticatedAPI();
   const { execute: registerUser } = useApiState();
+
+  // Automatically sync wallet changes to user database
+  const walletSync = useWalletSync();
 
   // Track if we've already attempted to register the current user
   const registeredUserIdRef = useRef<string | null>(null);
@@ -46,24 +50,31 @@ export default function Home() {
 
       const attemptRegistration = async () => {
         try {
+          // Prepare registration data
+          const registrationData: any = {
+            privyId: user.id,
+            farcasterFid: user.farcaster?.fid,
+            farcaster: {
+              username: user.farcaster?.username,
+              displayName: user.farcaster?.displayName,
+              bio: user.farcaster?.bio,
+              pfp: user.farcaster?.pfp,
+              ownerAddress: user.farcaster?.ownerAddress,
+            },
+          };
+
+          // Only include wallet if address is present
+          if (user.wallet?.address) {
+            registrationData.wallet = {
+              address: user.wallet.address,
+              chainType: user.wallet.chainType,
+              walletClientType: user.wallet.walletClientType,
+              connectorType: user.wallet.connectorType,
+            };
+          }
+
           await registerUser(() =>
-            post("/api/users/register", {
-              privyId: user.id,
-              farcasterFid: user.farcaster?.fid,
-              farcaster: {
-                username: user.farcaster?.username,
-                displayName: user.farcaster?.displayName,
-                bio: user.farcaster?.bio,
-                pfp: user.farcaster?.pfp,
-                ownerAddress: user.farcaster?.ownerAddress,
-              },
-              wallet: {
-                address: user.wallet?.address,
-                chainType: user.wallet?.chainType,
-                walletClientType: user.wallet?.walletClientType,
-                connectorType: user.wallet?.connectorType,
-              },
-            })
+            post("/api/users/register", registrationData)
           );
         } catch (error) {
           // If registration fails, reset so we can retry later
@@ -98,6 +109,7 @@ export default function Home() {
     );
   }
   console.log(user);
+  console.log("Wallet sync status:", walletSync);
   if (!isSDKLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -113,7 +125,6 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <div className="max-w-md mx-auto">
         <LoginPage />
-        {isConnected && <ProfilePage />}
       </div>
       <BottomNavigation />
     </div>

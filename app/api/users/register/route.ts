@@ -25,8 +25,7 @@ async function registerHandler(request: Request) {
     .string(body.privyId, "privyId", 1, 100)
     .required(body.farcasterFid, "farcasterFid")
     .number(body.farcasterFid, "farcasterFid", 1)
-    .required(body.farcaster, "farcaster")
-    .required(body.wallet, "wallet");
+    .required(body.farcaster, "farcaster");
 
   // Validate farcaster object
   if (body.farcaster) {
@@ -101,29 +100,35 @@ async function registerHandler(request: Request) {
     return ApiResponseBuilder.conflict(API_MESSAGES.USERNAME_EXISTS);
   }
 
-  // Check if user already exists with this wallet address
-  const existingUserByWallet = await (User as any).findByWalletAddress(
-    body.wallet.address
-  );
-  if (existingUserByWallet) {
-    return ApiResponseBuilder.conflict(API_MESSAGES.WALLET_ADDRESS_EXISTS);
+  // Check if user already exists with this wallet address (if wallet provided)
+  if (body.wallet) {
+    const existingUserByWallet = await (User as any).findByWalletAddress(
+      body.wallet.address
+    );
+    if (existingUserByWallet) {
+      return ApiResponseBuilder.conflict(API_MESSAGES.WALLET_ADDRESS_EXISTS);
+    }
   }
 
-  // Create new user with wallet as an array
-  const userData = {
+  // Create new user data
+  const userData: any = {
     privyId: body.privyId,
     farcasterFid: body.farcasterFid,
     farcaster: body.farcaster,
-    wallets: [
-      {
-        address: body.wallet.address,
-        chainType: body.wallet.chainType,
-        walletClientType: body.wallet.walletClientType,
-        connectorType: body.wallet.connectorType,
-        isPrimary: true, // First wallet is always primary
-      },
-    ],
+    wallets: [], // Initialize empty wallets array
   };
+
+  // Add wallet to array if provided
+  if (body.wallet) {
+    const { address, chainType, walletClientType, connectorType } = body.wallet;
+    userData.wallets.push({
+      address,
+      chainType,
+      walletClientType,
+      connectorType,
+      isPrimary: true, // First wallet is always primary
+    });
+  }
 
   const newUser = new User(userData);
   await newUser.save();

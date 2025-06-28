@@ -4,36 +4,11 @@ import { useAccount, useSignMessage } from "wagmi";
 import { ProfileCard } from "@/components/common";
 import { ErrorDisplay } from "@/components/ui/error-display";
 import { useCallback } from "react";
-import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
 
 const LoginPage = () => {
-  const { authenticated, login, user } = usePrivy();
+  const { authenticated, login, user, linkWallet } = usePrivy();
   const { address, isConnected } = useAccount();
   const { data: signature, error, signMessage } = useSignMessage();
-  const { post } = useAuthenticatedAPI();
-
-  const { linkWallet } = useLinkAccount({
-    onSuccess: async ({ linkedAccount }) => {
-      console.log("Linked account to user ", linkedAccount);
-
-      if (linkedAccount.type === "wallet") {
-        try {
-          const response = await post("/api/users/me/wallet", {
-            address: linkedAccount.address,
-            chainType: linkedAccount.chainType || "ethereum",
-            walletClientType: linkedAccount.walletClientType,
-            connectorType: linkedAccount.connectorType,
-          });
-          console.log("✅ Successfully added wallet to backend:", response);
-        } catch (error) {
-          console.error("❌ Failed to add wallet to backend:", error);
-        }
-      }
-    },
-    onError: (error) => {
-      console.error("Failed to link account with error ", error);
-    },
-  });
 
   const handleSignMessage = useCallback(() => {
     signMessage({ message: "Hello, world!" });
