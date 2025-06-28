@@ -8,12 +8,14 @@ import { LoginPage } from "@/modules/login";
 import { useAccount } from "wagmi";
 import { ProfilePage } from "@/modules/profile";
 import BottomNavigation from "@/components/bottom-navigation";
+import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
 
 export default function Home() {
   const { ready, authenticated, logout, login, user, linkWallet } = usePrivy();
   const { isSDKLoaded } = useMiniApp();
   const { initLoginToFrame, loginToFrame } = useLoginToFrame();
   const { address, isConnected } = useAccount();
+  const { post } = useAuthenticatedAPI();
 
   useEffect(() => {
     console.log("First useEFfect", ready, authenticated);
@@ -31,31 +33,38 @@ export default function Home() {
   }, [ready, authenticated, initLoginToFrame, loginToFrame]);
 
   useEffect(() => {
-    console.log("second useEffect", user);
-    if (user) {
-      fetch("/api/user/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          privyId: user.id,
-          farcasterFid: user.farcaster?.fid,
-          farcaster: {
-            username: user.farcaster?.username,
-            displayName: user.farcaster?.displayName,
-            bio: user.farcaster?.bio,
-            pfp: user.farcaster?.pfp,
-            ownerAddress: user.farcaster?.ownerAddress,
-          },
-          wallet: {
-            address: user.wallet?.address,
-            chainType: user.wallet?.chainType,
-            walletClientType: user.wallet?.walletClientType,
-            connectorType: user.wallet?.connectorType,
-          },
-        }),
-      });
+    console.log("second useEffect", user, authenticated);
+    if (user && authenticated) {
+      // Register user with authenticated API call
+      const registerUser = async () => {
+        try {
+          const response = await post("/api/users/register", {
+            privyId: user.id,
+            farcasterFid: user.farcaster?.fid,
+            farcaster: {
+              username: user.farcaster?.username,
+              displayName: user.farcaster?.displayName,
+              bio: user.farcaster?.bio,
+              pfp: user.farcaster?.pfp,
+              ownerAddress: user.farcaster?.ownerAddress,
+            },
+            wallet: {
+              address: user.wallet?.address,
+              chainType: user.wallet?.chainType,
+              walletClientType: user.wallet?.walletClientType,
+              connectorType: user.wallet?.connectorType,
+            },
+          });
+          console.log("User registration response:", response);
+        } catch (error) {
+          // User might already exist, which is fine
+          console.log("User registration error (might already exist):", error);
+        }
+      };
+
+      registerUser();
     }
-  }, [user]);
+  }, [user, authenticated, post]);
 
   if (!ready) {
     return (

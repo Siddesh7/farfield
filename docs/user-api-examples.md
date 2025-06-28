@@ -8,11 +8,19 @@ Complete API documentation for user management in a TypeScript/Next.js project w
 
 ## 🔐 **Authentication**
 
-All endpoints require Privy authentication via header:
+Protected endpoints require Privy authentication via Bearer token:
 
 ```
-x-privy-id: user_privy_id_here
+Authorization: Bearer <your_privy_access_token>
 ```
+
+**Getting Access Token:**
+
+- Frontend: Use `getAccessToken()` from `usePrivy` hook
+- Use `useAuthenticatedAPI()` hook for automatic token handling
+
+**Protected Endpoints:** All `/api/users/me/*` routes  
+**Public Endpoints:** User lookup routes (by ID, username, etc.)
 
 ## 📊 **Response Format**
 
@@ -33,11 +41,11 @@ All endpoints follow the standardized API response format:
 
 ### 1. Get Current User
 
-**`GET /api/users/me`**
+**`GET /api/users/me`** 🔒 _Protected_
 
 ```bash
 curl -X GET "http://localhost:3000/api/users/me" \
-  -H "x-privy-id: privy_user_123"
+  -H "Authorization: Bearer <your_access_token>"
 ```
 
 **Response:**
@@ -78,12 +86,12 @@ curl -X GET "http://localhost:3000/api/users/me" \
 
 ### 2. Update Current User
 
-**`PUT /api/users/me`**
+**`PUT /api/users/me`** 🔒 _Protected_
 
 ```bash
 curl -X PUT "http://localhost:3000/api/users/me" \
   -H "Content-Type: application/json" \
-  -H "x-privy-id: privy_user_123" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{
     "farcaster": {
       "displayName": "Alice Cooper",
@@ -94,11 +102,11 @@ curl -X PUT "http://localhost:3000/api/users/me" \
 
 ### 3. Delete Current User
 
-**`DELETE /api/users/me`**
+**`DELETE /api/users/me`** 🔒 _Protected_
 
 ```bash
 curl -X DELETE "http://localhost:3000/api/users/me" \
-  -H "x-privy-id: privy_user_123"
+  -H "Authorization: Bearer <your_access_token>"
 ```
 
 ### 4. Register New User
@@ -215,12 +223,12 @@ curl -X GET "http://localhost:3000/api/users/search?query=alice&page=1&limit=5"
 
 ### 12. Update Farcaster Profile
 
-**`PUT /api/users/me/farcaster`**
+**`PUT /api/users/me/farcaster`** 🔒 _Protected_
 
 ```bash
 curl -X PUT "http://localhost:3000/api/users/me/farcaster" \
   -H "Content-Type: application/json" \
-  -H "x-privy-id: privy_user_123" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{
     "displayName": "Alice The Builder",
     "bio": "Building the future, one block at a time",
@@ -234,14 +242,14 @@ curl -X PUT "http://localhost:3000/api/users/me/farcaster" \
 
 ### 13. Add New Wallet
 
-**`POST /api/users/me/wallet`**
+**`POST /api/users/me/wallet`** 🔒 _Protected_
 
 **Note:** Only `address` is required. All other fields are optional.
 
 ```bash
 curl -X POST "http://localhost:3000/api/users/me/wallet" \
   -H "Content-Type: application/json" \
-  -H "x-privy-id: privy_user_123" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{
     "address": "0x8ba1f109551bd432803012645hbf8c8f9edc7d",
     "chainType": "polygon",
@@ -256,7 +264,7 @@ curl -X POST "http://localhost:3000/api/users/me/wallet" \
 ```bash
 curl -X POST "http://localhost:3000/api/users/me/wallet" \
   -H "Content-Type: application/json" \
-  -H "x-privy-id: privy_user_123" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{
     "address": "0x8ba1f109551bd432803012645hbf8c8f9edc7d"
   }'
@@ -264,14 +272,14 @@ curl -X POST "http://localhost:3000/api/users/me/wallet" \
 
 ### 14. Remove Wallet
 
-**`DELETE /api/users/me/wallet`**
+**`DELETE /api/users/me/wallet`** 🔒 _Protected_
 
 **Note:** Cannot remove the last wallet. If removing primary wallet, first remaining wallet becomes primary.
 
 ```bash
 curl -X DELETE "http://localhost:3000/api/users/me/wallet" \
   -H "Content-Type: application/json" \
-  -H "x-privy-id: privy_user_123" \
+  -H "Authorization: Bearer <your_access_token>" \
   -d '{
     "address": "0x8ba1f109551bd432803012645hbf8c8f9edc7d"
   }'

@@ -7,16 +7,15 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { UserResponse, FarcasterUpdateRequest } from "@/lib/types/user";
+import { verifyPrivyToken } from "@/lib/auth/privy-auth";
 
 // PUT /api/users/me/farcaster - Update Farcaster profile
 async function updateFarcasterHandler(request: Request) {
   await connectDB();
 
-  const privyId = request.headers.get("x-privy-id");
-
-  if (!privyId) {
-    return ApiResponseBuilder.unauthorized(API_MESSAGES.TOKEN_REQUIRED);
-  }
+  // Verify Privy access token and get authenticated user
+  const authenticatedUser = await verifyPrivyToken(request as any);
+  const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
   if (!validator.isValid()) {
@@ -83,4 +82,20 @@ async function updateFarcasterHandler(request: Request) {
   );
 }
 
-export const PUT = withErrorHandling(updateFarcasterHandler);
+// Wrap handler with both error handling and authentication
+async function authenticatedPutHandler(request: Request) {
+  try {
+    return await updateFarcasterHandler(request);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("token") ||
+        error.message.includes("Authentication"))
+    ) {
+      return ApiResponseBuilder.unauthorized(error.message);
+    }
+    throw error;
+  }
+}
+
+export const PUT = withErrorHandling(authenticatedPutHandler);

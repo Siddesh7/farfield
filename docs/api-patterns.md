@@ -87,6 +87,39 @@ ApiResponseBuilder.unauthorized("Token required");
 ApiResponseBuilder.conflict("Resource already exists");
 ```
 
+## 🔐 Authentication Patterns
+
+### Protected Routes
+
+Use Privy access token verification for protected endpoints:
+
+```typescript
+import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+
+// For protected endpoints (all /api/users/me/* routes)
+const authenticatedUser = await verifyPrivyToken(request as any);
+const privyId = authenticatedUser.privyId;
+```
+
+### Public Routes
+
+Skip authentication for public endpoints (user lookup routes):
+
+```typescript
+// For public endpoints like /api/users/[id], /api/users/username/[username], etc.
+// No authentication needed
+```
+
+### Frontend Integration
+
+```typescript
+// Use authentication hook for automatic token handling
+import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
+
+const { get, post, put, delete: del } = useAuthenticatedAPI();
+const response = await get("/api/users/me");
+```
+
 ## 🗄️ Database Query Patterns
 
 ### User Model Static Methods
@@ -123,16 +156,15 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { ResponseType, RequestType } from "@/lib/types/model-name";
+import { verifyPrivyToken } from "@/lib/auth/privy-auth";
 
 // HTTP_METHOD /api/route/path - Description
 async function handlerName(request: Request) {
   await connectDB();
 
-  // Authentication (if needed)
-  const privyId = request.headers.get("x-privy-id");
-  if (!privyId) {
-    return ApiResponseBuilder.unauthorized(API_MESSAGES.TOKEN_REQUIRED);
-  }
+  // Authentication (if needed for protected endpoints)
+  const authenticatedUser = await verifyPrivyToken(request as any);
+  const privyId = authenticatedUser.privyId;
 
   // Body parsing AND validation (if needed)
   const validator = await RequestValidator.fromRequest(request);

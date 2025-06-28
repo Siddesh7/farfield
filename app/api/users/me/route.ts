@@ -7,18 +7,15 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { UserResponse, UserUpdateRequest } from "@/lib/types/user";
+import { verifyPrivyToken } from "@/lib/auth/privy-auth";
 
 // GET /api/users/me - Get current authenticated user's profile
 async function getMeHandler(request: Request) {
   await connectDB();
 
-  // TODO: Add authentication middleware to get privyId from token
-  // For now, we'll get it from headers as a placeholder
-  const privyId = request.headers.get("x-privy-id");
-
-  if (!privyId) {
-    return ApiResponseBuilder.unauthorized(API_MESSAGES.TOKEN_REQUIRED);
-  }
+  // Verify Privy access token and get authenticated user
+  const authenticatedUser = await verifyPrivyToken(request as any);
+  const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
 
@@ -39,11 +36,9 @@ async function getMeHandler(request: Request) {
 async function updateMeHandler(request: Request) {
   await connectDB();
 
-  const privyId = request.headers.get("x-privy-id");
-
-  if (!privyId) {
-    return ApiResponseBuilder.unauthorized(API_MESSAGES.TOKEN_REQUIRED);
-  }
+  // Verify Privy access token and get authenticated user
+  const authenticatedUser = await verifyPrivyToken(request as any);
+  const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
   if (!validator.isValid()) {
@@ -107,11 +102,9 @@ async function updateMeHandler(request: Request) {
 async function deleteMeHandler(request: Request) {
   await connectDB();
 
-  const privyId = request.headers.get("x-privy-id");
-
-  if (!privyId) {
-    return ApiResponseBuilder.unauthorized(API_MESSAGES.TOKEN_REQUIRED);
-  }
+  // Verify Privy access token and get authenticated user
+  const authenticatedUser = await verifyPrivyToken(request as any);
+  const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
 
@@ -127,6 +120,52 @@ async function deleteMeHandler(request: Request) {
   );
 }
 
-export const GET = withErrorHandling(getMeHandler);
-export const PUT = withErrorHandling(updateMeHandler);
-export const DELETE = withErrorHandling(deleteMeHandler);
+// Wrap handlers with both error handling and authentication
+async function authenticatedGetHandler(request: Request) {
+  try {
+    return await getMeHandler(request);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("token") ||
+        error.message.includes("Authentication"))
+    ) {
+      return ApiResponseBuilder.unauthorized(error.message);
+    }
+    throw error;
+  }
+}
+
+async function authenticatedPutHandler(request: Request) {
+  try {
+    return await updateMeHandler(request);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("token") ||
+        error.message.includes("Authentication"))
+    ) {
+      return ApiResponseBuilder.unauthorized(error.message);
+    }
+    throw error;
+  }
+}
+
+async function authenticatedDeleteHandler(request: Request) {
+  try {
+    return await deleteMeHandler(request);
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("token") ||
+        error.message.includes("Authentication"))
+    ) {
+      return ApiResponseBuilder.unauthorized(error.message);
+    }
+    throw error;
+  }
+}
+
+export const GET = withErrorHandling(authenticatedGetHandler);
+export const PUT = withErrorHandling(authenticatedPutHandler);
+export const DELETE = withErrorHandling(authenticatedDeleteHandler);
