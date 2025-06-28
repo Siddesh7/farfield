@@ -1,35 +1,49 @@
-import { NextResponse } from "next/server";
 import { getFileStream } from "@/lib/r2";
+import {
+  ApiResponseBuilder,
+  withErrorHandling,
+} from "@/lib/utils/api-response";
+import { RequestValidator } from "@/lib/utils/validation";
 
-export async function GET(
+async function getFileHandler(
   request: Request,
   { params }: { params: Promise<{ key: string }> }
 ) {
-  try {
-    const { key } = await params;
-    if (!key) {
-      return NextResponse.json(
-        { error: "No file key provided" },
-        { status: 400 }
-      );
-    }
+  const { key } = await params;
 
-    console.log(`Fetching file with key: ${key}`);
+  // Validate key parameter
+  const validator = new RequestValidator();
+  validator.required(key, "key").string(key, "key", 1);
+
+  if (!validator.isValid()) {
+    return validator.getErrorResponse()!;
+  }
+
+  console.log(`Fetching file with key: ${key}`);
+
+  try {
     const stream = await getFileStream(key);
 
     const headers = new Headers();
-    headers.set("Content-Type", "application/octet-stream"); // Generic type, adjust if needed
+    headers.set("Content-Type", "application/octet-stream");
     headers.set(
       "Content-Disposition",
       `inline; filename="${key.split("_").pop()}"`
-    ); // Extract original name
-
-    return new NextResponse(stream as any, { headers, status: 200 });
-  } catch (error) {
-    console.error("Proxy error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch file" },
-      { status: 500 }
     );
+
+    // For file downloads, we return the stream directly rather than using ApiResponseBuilder
+    // since this is a binary response, not a JSON API response
+    return new Response(stream as any, { headers, status: 200 });
+  } catch (error) {
+    console.error("File fetch error:", error);
+
+    // Check if it's a "not found" error (this depends on your R2 implementation)
+    if (error instanceof Error && error.message.includes("not found")) {
+      return ApiResponseBuilder.notFound("File not found");
+    }
+
+    throw error; // Let withErrorHandling catch other errors
   }
 }
+
+export const GET = withErrorHandling(getFileHandler);

@@ -1,36 +1,83 @@
-import { NextResponse } from "next/server";
 import { storeFile } from "@/lib/r2";
+import {
+  ApiResponseBuilder,
+  withErrorHandling,
+} from "@/lib/utils/api-response";
+import { RequestValidator } from "@/lib/utils/validation";
+import { FileUploadResponse } from "@/lib/types/api";
 
-export async function POST(request: Request) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
+async function uploadHandler(request: Request) {
+  // Parse form data
+  const formData = await request.formData();
+  const file = formData.get("file") as File | null;
 
-    if (!file) {
-      console.error("No file provided in form data");
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
-    }
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+  // Validate file
+  const validator = new RequestValidator();
+  validator.required(file, "file");
 
-    const fileKey = await storeFile({
-      buffer,
-      originalname: file.name,
-      mimetype: file.type,
-    });
-
-    const fileUrl = `${process.env.R2_ENDPOINT}/${fileKey}`;
-
-    return NextResponse.json({
-      message: "File uploaded successfully",
-      fileKey,
-      fileUrl,
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
+  if (!validator.isValid()) {
+    return validator.getErrorResponse()!;
   }
+
+  // Additional file validation
+  if (file) {
+    if (file.size === 0) {
+      return ApiResponseBuilder.error("File cannot be empty", 400);
+    }
+
+    // Optional: Add file size limit (e.g., 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      return ApiResponseBuilder.error("File size exceeds 10MB limit", 400);
+    }
+
+    // Optional: Validate file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+      "text/plain",
+      "application/json",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      return ApiResponseBuilder.error(
+        `File type ${
+          file.type
+        } is not allowed. Allowed types: ${allowedTypes.join(", ")}`,
+        400
+      );
+    }
+  }
+
+  // Process file upload
+  const arrayBuffer = await file!.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const fileKey = await storeFile({
+    buffer,
+    originalname: file!.name,
+    mimetype: file!.type,
+  });
+
+  const fileUrl = `${process.env.R2_ENDPOINT}/${fileKey}`;
+
+  // Create standardized response
+  const responseData: FileUploadResponse = {
+    fileKey,
+    fileUrl,
+    originalName: file!.name,
+    size: file!.size,
+    mimeType: file!.type,
+  };
+
+  return ApiResponseBuilder.success(
+    responseData,
+    "File uploaded successfully",
+    201
+  );
 }
+
+export const POST = withErrorHandling(uploadHandler);
