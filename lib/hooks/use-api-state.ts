@@ -73,20 +73,20 @@ export function useUserProfileApi() {
 
   const fetchProfile = useCallback(() => {
     return profileState.execute(() => get("/api/users/me"));
-  }, [profileState, get]);
+  }, [profileState.execute, get]);
 
   const updateProfile = useCallback(
     (data: any) => {
       return updateState.execute(() => put("/api/users/me", data));
     },
-    [updateState, put]
+    [updateState.execute, put]
   );
 
   const updateFarcaster = useCallback(
     (data: any) => {
       return updateState.execute(() => put("/api/users/me/farcaster", data));
     },
-    [updateState, put]
+    [updateState.execute, put]
   );
 
   return {

@@ -1,13 +1,13 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniApp } from "@/providers/provider";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import frameSdk from "@farcaster/frame-sdk";
 import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
 import { LoginPage } from "@/modules/login";
 import { useAccount } from "wagmi";
 import { ProfilePage } from "@/modules/profile";
-import BottomNavigation from "@/components/bottom-navigation";
+import BottomNavigation from "@/components/layout/bottom-navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useApiState } from "@/lib/hooks/use-api-state";
 import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
@@ -19,6 +19,9 @@ export default function Home() {
   const { isConnected } = useAccount();
   const { post } = useAuthenticatedAPI();
   const { execute: registerUser } = useApiState();
+
+  // Track if we've already attempted to register the current user
+  const registeredUserIdRef = useRef<string | null>(null);
 
   const handleFrameLogin = useCallback(async () => {
     if (ready && !authenticated) {
@@ -35,37 +38,54 @@ export default function Home() {
     }
   }, [ready, authenticated, initLoginToFrame, loginToFrame]);
 
-  const handleUserRegistration = useCallback(async () => {
-    if (user && authenticated) {
-      await registerUser(() =>
-        post("/api/users/register", {
-          privyId: user.id,
-          farcasterFid: user.farcaster?.fid,
-          farcaster: {
-            username: user.farcaster?.username,
-            displayName: user.farcaster?.displayName,
-            bio: user.farcaster?.bio,
-            pfp: user.farcaster?.pfp,
-            ownerAddress: user.farcaster?.ownerAddress,
-          },
-          wallet: {
-            address: user.wallet?.address,
-            chainType: user.wallet?.chainType,
-            walletClientType: user.wallet?.walletClientType,
-            connectorType: user.wallet?.connectorType,
-          },
-        })
-      );
+  // Register user only once per user ID
+  useEffect(() => {
+    if (user && authenticated && registeredUserIdRef.current !== user.id) {
+      // Mark this user as being processed
+      registeredUserIdRef.current = user.id;
+
+      const attemptRegistration = async () => {
+        try {
+          await registerUser(() =>
+            post("/api/users/register", {
+              privyId: user.id,
+              farcasterFid: user.farcaster?.fid,
+              farcaster: {
+                username: user.farcaster?.username,
+                displayName: user.farcaster?.displayName,
+                bio: user.farcaster?.bio,
+                pfp: user.farcaster?.pfp,
+                ownerAddress: user.farcaster?.ownerAddress,
+              },
+              wallet: {
+                address: user.wallet?.address,
+                chainType: user.wallet?.chainType,
+                walletClientType: user.wallet?.walletClientType,
+                connectorType: user.wallet?.connectorType,
+              },
+            })
+          );
+        } catch (error) {
+          // If registration fails, reset so we can retry later
+          console.error("User registration failed:", error);
+          registeredUserIdRef.current = null;
+        }
+      };
+
+      attemptRegistration();
     }
-  }, [user, authenticated, registerUser, post]);
+  }, [user?.id, authenticated, registerUser, post]);
 
   useEffect(() => {
     handleFrameLogin();
   }, [handleFrameLogin]);
 
+  // Clear registered user ID when user logs out
   useEffect(() => {
-    handleUserRegistration();
-  }, [handleUserRegistration]);
+    if (!authenticated) {
+      registeredUserIdRef.current = null;
+    }
+  }, [authenticated]);
 
   if (!ready) {
     return (
@@ -77,7 +97,7 @@ export default function Home() {
       </div>
     );
   }
-
+  console.log(user);
   if (!isSDKLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen">

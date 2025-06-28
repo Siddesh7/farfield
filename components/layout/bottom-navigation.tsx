@@ -4,7 +4,7 @@ import {
   ReminderIcon,
   ShoppingIcon,
   UserIcon,
-} from "@/common";
+} from "@/components/icons";
 import { useGlobalContext } from "@/context/global-context";
 import { ModulesType } from "@/types/global";
 import { useCallback } from "react";
