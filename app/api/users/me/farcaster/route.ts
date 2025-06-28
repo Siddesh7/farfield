@@ -7,14 +7,15 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { UserResponse, FarcasterUpdateRequest } from "@/lib/types/user";
-import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 
 // PUT /api/users/me/farcaster - Update Farcaster profile
-async function updateFarcasterHandler(request: Request) {
+async function updateFarcasterHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -82,20 +83,5 @@ async function updateFarcasterHandler(request: Request) {
   );
 }
 
-// Wrap handler with both error handling and authentication
-async function authenticatedPutHandler(request: Request) {
-  try {
-    return await updateFarcasterHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-export const PUT = withErrorHandling(authenticatedPutHandler);
+// Export route with authentication and error handling
+export const PUT = withErrorHandling(withAuth(updateFarcasterHandler));

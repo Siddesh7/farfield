@@ -56,14 +56,16 @@ export async function verifyPrivyToken(
  */
 export function withAuth<T extends any[]>(
   handler: (
-    request: NextRequest,
+    request: Request,
     authenticatedUser: AuthenticatedUser,
     ...args: T
   ) => Promise<Response>
 ) {
-  return async (request: NextRequest, ...args: T): Promise<Response> => {
+  return async (request: Request, ...args: T): Promise<Response> => {
     try {
-      const authenticatedUser = await verifyPrivyToken(request);
+      // Convert Request to NextRequest for verifyPrivyToken
+      const nextRequest = request as NextRequest;
+      const authenticatedUser = await verifyPrivyToken(nextRequest);
       return handler(request, authenticatedUser, ...args);
     } catch (error) {
       return new Response(

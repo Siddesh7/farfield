@@ -1,18 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { useMiniApp } from "@/providers/provider";
 import { usePrivy } from "@privy-io/react-auth";
-import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
-import React from "react";
 import { useAccount, useSignMessage } from "wagmi";
+import { ProfileCard } from "@/components/ui/profile-card";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { useCallback } from "react";
 
 const LoginPage = () => {
-  const { ready, authenticated, logout, login, user, linkWallet } = usePrivy();
+  const { authenticated, login, user, linkWallet } = usePrivy();
   const { address, isConnected } = useAccount();
   const { data: signature, error, signMessage } = useSignMessage();
 
-  const handleSignMessage = () => {
+  const handleSignMessage = useCallback(() => {
     signMessage({ message: "Hello, world!" });
-  };
+  }, [signMessage]);
 
   return (
     <div>
@@ -22,48 +22,8 @@ const LoginPage = () => {
 
       <div className="flex flex-col items-center justify-center py-12 px-4">
         <div className="w-full max-w-md space-y-8 rounded-xl shadow-lg p-8 bg-white/80">
-          {/* Profile Card */}
-          {user && (
-            <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 p-4 mb-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-2">
-                {user.farcaster?.pfp ? (
-                  <img
-                    src={user.farcaster.pfp}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-2xl text-gray-400">👤</span>
-                )}
-              </div>
-              <div className="text-lg font-semibold text-gray-900">
-                {user.farcaster?.displayName ||
-                  user.google?.name ||
-                  user.twitter?.name ||
-                  "Anonymous"}
-              </div>
-              {user.farcaster?.username && (
-                <div className="text-xs text-purple-600">
-                  @{user.farcaster.username}
-                </div>
-              )}
-              {user.email?.address && (
-                <div className="text-xs text-gray-600">
-                  {user.email.address}
-                </div>
-              )}
-              {user.wallet?.address && (
-                <div className="text-xs font-mono text-blue-700 break-all">
-                  {user.wallet.address}
-                </div>
-              )}
-              {user.farcaster?.bio && (
-                <div className="text-xs text-gray-500 text-center mt-2">
-                  {user.farcaster.bio}
-                </div>
-              )}
-            </div>
-          )}
+          {user && <ProfileCard user={user} variant="full" className="mb-4" />}
+
           <div className="flex flex-col gap-4">
             {!authenticated && (
               <Button variant="default" className="w-full" onClick={login}>
@@ -71,20 +31,17 @@ const LoginPage = () => {
               </Button>
             )}
 
-            {!authenticated ||
-              (!isConnected && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={linkWallet}
-                >
-                  Connect Wallet
-                </Button>
-              ))}
+            {(!authenticated || !isConnected) && (
+              <Button variant="outline" className="w-full" onClick={linkWallet}>
+                Connect Wallet
+              </Button>
+            )}
           </div>
-          <div className="mt-6 text-center text-sm">
+
+          <div className="mt-6 text-center text-sm space-y-2">
             <p>
-              Address: <span className="font-mono">{address}</span>
+              Address:{" "}
+              <span className="font-mono">{address || "Not connected"}</span>
             </p>
             <p>
               Status:{" "}
@@ -93,6 +50,7 @@ const LoginPage = () => {
               </span>
             </p>
           </div>
+
           {isConnected && (
             <Button
               onClick={handleSignMessage}
@@ -102,16 +60,21 @@ const LoginPage = () => {
               Sign a message
             </Button>
           )}
+
           {signature && (
-            <div className="mt-2 text-xs break-all text-green-700">
-              Signature: {signature}
+            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+              <p className="text-xs text-green-700 font-medium">Signature:</p>
+              <p className="text-xs text-green-600 break-all font-mono">
+                {signature}
+              </p>
             </div>
           )}
-          {error && (
-            <div className="mt-2 text-xs text-red-600">
-              Error: {error.message}
-            </div>
-          )}
+
+          <ErrorDisplay
+            error={error?.message || null}
+            variant="inline"
+            className="mt-2"
+          />
         </div>
       </div>
     </div>

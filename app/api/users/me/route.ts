@@ -7,14 +7,15 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { UserResponse, UserUpdateRequest } from "@/lib/types/user";
-import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 
 // GET /api/users/me - Get current authenticated user's profile
-async function getMeHandler(request: Request) {
+async function getMeHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
@@ -33,11 +34,12 @@ async function getMeHandler(request: Request) {
 }
 
 // PUT /api/users/me - Update current user's profile
-async function updateMeHandler(request: Request) {
+async function updateMeHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -99,11 +101,12 @@ async function updateMeHandler(request: Request) {
 }
 
 // DELETE /api/users/me - Delete current user's account
-async function deleteMeHandler(request: Request) {
+async function deleteMeHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
@@ -120,52 +123,7 @@ async function deleteMeHandler(request: Request) {
   );
 }
 
-// Wrap handlers with both error handling and authentication
-async function authenticatedGetHandler(request: Request) {
-  try {
-    return await getMeHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-async function authenticatedPutHandler(request: Request) {
-  try {
-    return await updateMeHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-async function authenticatedDeleteHandler(request: Request) {
-  try {
-    return await deleteMeHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-export const GET = withErrorHandling(authenticatedGetHandler);
-export const PUT = withErrorHandling(authenticatedPutHandler);
-export const DELETE = withErrorHandling(authenticatedDeleteHandler);
+// Export routes with authentication and error handling
+export const GET = withErrorHandling(withAuth(getMeHandler));
+export const PUT = withErrorHandling(withAuth(updateMeHandler));
+export const DELETE = withErrorHandling(withAuth(deleteMeHandler));

@@ -5,8 +5,9 @@ import {
   useAuthenticatedAPI,
   useAuthenticatedFetch,
 } from "@/lib/hooks/use-authenticated-fetch";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface TestResult {
   endpoint: string;
@@ -64,25 +65,31 @@ export default function TestPage() {
   };
 
   // Test Functions
-  const testGetMe = () =>
-    runTest(
-      "GET /api/users/me",
-      () => get("/api/users/me"),
-      "Get current authenticated user"
-    );
+  const testGetMe = useCallback(
+    () =>
+      runTest(
+        "GET /api/users/me",
+        () => get("/api/users/me"),
+        "Get current authenticated user"
+      ),
+    [get]
+  );
 
-  const testUpdateMe = () =>
-    runTest(
-      "PUT /api/users/me",
-      () =>
-        put("/api/users/me", {
-          farcaster: {
-            displayName: "Test User Updated",
-            bio: "Updated bio from test page",
-          },
-        }),
-      "Update current user profile"
-    );
+  const testUpdateMe = useCallback(
+    () =>
+      runTest(
+        "PUT /api/users/me",
+        () =>
+          put("/api/users/me", {
+            farcaster: {
+              displayName: "Test User Updated",
+              bio: "Updated bio from test page",
+            },
+          }),
+        "Update current user profile"
+      ),
+    [put]
+  );
 
   const testUpdateFarcaster = () =>
     runTest(
@@ -246,7 +253,7 @@ export default function TestPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <LoadingSpinner className="mx-auto mb-4" />
           <p>Loading Privy...</p>
         </div>
       </div>

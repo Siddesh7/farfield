@@ -91,14 +91,22 @@ ApiResponseBuilder.conflict("Resource already exists");
 
 ### Protected Routes
 
-Use Privy access token verification for protected endpoints:
+Use the `withAuth` higher-order function for protected endpoints:
 
 ```typescript
-import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 
 // For protected endpoints (all /api/users/me/* routes)
-const authenticatedUser = await verifyPrivyToken(request as any);
-const privyId = authenticatedUser.privyId;
+async function myHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
+  const privyId = authenticatedUser.privyId;
+  // ... rest of handler logic
+}
+
+// Export with authentication wrapper
+export const POST = withErrorHandling(withAuth(myHandler));
 ```
 
 ### Public Routes
@@ -156,14 +164,16 @@ import {
   API_MESSAGES,
 } from "@/lib";
 import { ResponseType, RequestType } from "@/lib/types/model-name";
-import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 
-// HTTP_METHOD /api/route/path - Description
-async function handlerName(request: Request) {
+// HTTP_METHOD /api/route/path - Description (Protected Route)
+async function handlerName(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Authentication (if needed for protected endpoints)
-  const authenticatedUser = await verifyPrivyToken(request as any);
+  // Authentication is handled automatically by withAuth
   const privyId = authenticatedUser.privyId;
 
   // Body parsing AND validation (if needed)
@@ -187,7 +197,11 @@ async function handlerName(request: Request) {
   return ApiResponseBuilder.success(result, API_MESSAGES.SUCCESS_MESSAGE);
 }
 
-export const POST = withErrorHandling(handlerName);
+// For protected routes
+export const POST = withErrorHandling(withAuth(handlerName));
+
+// For public routes (no authentication needed)
+export const GET = withErrorHandling(publicHandlerName);
 ```
 
 ## 🚫 Deprecated Patterns

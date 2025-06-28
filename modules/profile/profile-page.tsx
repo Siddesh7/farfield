@@ -1,51 +1,49 @@
 import { usePrivy } from "@privy-io/react-auth";
-import React from "react";
+import { ProfileCard } from "@/components/ui/profile-card";
+import { LoadingState } from "@/components/ui/loading-spinner";
+import { useUserProfileApi } from "@/lib/hooks/use-api-state";
+import { ErrorBoundary } from "@/components/ui/error-display";
+import { useEffect } from "react";
 
 const ProfilePage = () => {
-  const { ready, authenticated, logout, login, user, linkWallet } = usePrivy();
+  const { ready, authenticated, user } = usePrivy();
+  const { profile, profileLoading, profileError, fetchProfile } =
+    useUserProfileApi();
+
+  // Fetch profile data when component mounts
+  useEffect(() => {
+    if (authenticated && ready) {
+      fetchProfile();
+    }
+  }, [authenticated, ready, fetchProfile]);
 
   return (
-    <div>
-      {user && (
-        <div className="flex flex-col items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 p-4 mb-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center mb-2">
-            {user.farcaster?.pfp ? (
-              <img
-                src={user.farcaster.pfp}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-2xl text-gray-400">👤</span>
-            )}
+    <LoadingState loading={!ready} text="Loading Privy...">
+      <div className="p-4">
+        {user && (
+          <div className="mb-6">
+            <ProfileCard user={user} variant="full" />
           </div>
-          <div className="text-lg font-semibold text-gray-900">
-            {user.farcaster?.displayName ||
-              user.google?.name ||
-              user.twitter?.name ||
-              "Anonymous"}
-          </div>
-          {user.farcaster?.username && (
-            <div className="text-xs text-purple-600">
-              @{user.farcaster.username}
-            </div>
-          )}
-          {user.email?.address && (
-            <div className="text-xs text-gray-600">{user.email.address}</div>
-          )}
-          {user.wallet?.address && (
-            <div className="text-xs font-mono text-blue-700 break-all">
-              {user.wallet.address}
-            </div>
-          )}
-          {user.farcaster?.bio && (
-            <div className="text-xs text-gray-500 text-center mt-2">
-              {user.farcaster.bio}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
+        )}
+
+        {authenticated && (
+          <LoadingState loading={profileLoading} text="Loading profile...">
+            <ErrorBoundary error={profileError} onRetry={fetchProfile}>
+              {profile && (
+                <div className="bg-white rounded-lg shadow-sm border p-4">
+                  <h2 className="text-lg font-semibold mb-4">
+                    Server Profile Data
+                  </h2>
+                  <pre className="text-sm bg-gray-50 p-3 rounded overflow-auto">
+                    {JSON.stringify(profile, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </ErrorBoundary>
+          </LoadingState>
+        )}
+      </div>
+    </LoadingState>
   );
 };
 

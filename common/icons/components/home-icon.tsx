@@ -1,4 +1,4 @@
-import React, { FC } from "react";
+import { FC } from "react";
 import IconWrapper from "../icon-wrapper";
 import { IconProps } from "../icon.types";
 

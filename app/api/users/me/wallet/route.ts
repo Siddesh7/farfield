@@ -12,14 +12,15 @@ import {
   WalletRemoveRequest,
 } from "@/lib/types/user";
 import { isAddress } from "viem";
-import { verifyPrivyToken } from "@/lib/auth/privy-auth";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 
 // POST /api/users/me/wallet - Add a new wallet
-async function addWalletHandler(request: Request) {
+async function addWalletHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -106,11 +107,12 @@ async function addWalletHandler(request: Request) {
 }
 
 // DELETE /api/users/me/wallet - Remove a wallet
-async function removeWalletHandler(request: Request) {
+async function removeWalletHandler(
+  request: Request,
+  authenticatedUser: AuthenticatedUser
+) {
   await connectDB();
 
-  // Verify Privy access token and get authenticated user
-  const authenticatedUser = await verifyPrivyToken(request as any);
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -173,36 +175,6 @@ async function removeWalletHandler(request: Request) {
   );
 }
 
-// Wrap handlers with both error handling and authentication
-async function authenticatedPostHandler(request: Request) {
-  try {
-    return await addWalletHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-async function authenticatedDeleteHandler(request: Request) {
-  try {
-    return await removeWalletHandler(request);
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      (error.message.includes("token") ||
-        error.message.includes("Authentication"))
-    ) {
-      return ApiResponseBuilder.unauthorized(error.message);
-    }
-    throw error;
-  }
-}
-
-export const POST = withErrorHandling(authenticatedPostHandler);
-export const DELETE = withErrorHandling(authenticatedDeleteHandler);
+// Export routes with authentication and error handling
+export const POST = withErrorHandling(withAuth(addWalletHandler));
+export const DELETE = withErrorHandling(withAuth(removeWalletHandler));
