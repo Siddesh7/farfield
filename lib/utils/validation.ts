@@ -3,6 +3,73 @@ import { ApiResponseBuilder } from "./api-response";
 
 export class RequestValidator {
   private errors: ValidationError[] = [];
+  public body: any = null;
+  private parseSuccess: boolean = true;
+
+  /**
+   * STANDARDIZED: Create validator from request with automatic body parsing
+   * This is the preferred method for all API endpoints that require request bodies.
+   *
+   * @param request - The incoming request object
+   * @returns Promise<RequestValidator> with parsed body or parsing errors
+   *
+   * @example
+   * ```typescript
+   * const validator = await RequestValidator.fromRequest(request);
+   * if (!validator.isValid()) {
+   *   return validator.getErrorResponse();
+   * }
+   *
+   * const body = validator.body;
+   * validator.required(body.field, "field");
+   * ```
+   */
+  static async fromRequest(request: Request): Promise<RequestValidator> {
+    const validator = new RequestValidator();
+
+    try {
+      // Parse body with validation
+      const contentLength = request.headers.get("content-length");
+      if (contentLength === "0" || contentLength === null) {
+        throw new Error("Request body is empty");
+      }
+
+      const contentType = request.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Content-Type must be application/json");
+      }
+
+      const body = await request.json();
+
+      if (
+        !body ||
+        (typeof body === "object" && Object.keys(body).length === 0)
+      ) {
+        throw new Error("Request body cannot be empty");
+      }
+
+      validator.body = body;
+      validator.parseSuccess = true;
+    } catch (error) {
+      validator.parseSuccess = false;
+      validator.errors.push({
+        field: "body",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid JSON format in request body",
+      });
+    }
+
+    return validator;
+  }
+
+  /**
+   * Check if body parsing was successful
+   */
+  get isBodyValid(): boolean {
+    return this.parseSuccess;
+  }
 
   /**
    * Validate required fields
@@ -169,14 +236,59 @@ export class RequestValidator {
 }
 
 /**
- * Parse and validate JSON body
+ * Parse and validate JSON body (DEPRECATED)
+ * @deprecated Use safeParseBody instead for consistent error handling
  */
-export async function parseAndValidateBody(request: Request): Promise<any> {
+async function parseAndValidateBody(request: Request): Promise<any> {
   try {
+    // Check if request has a body
+    const contentLength = request.headers.get("content-length");
+    if (contentLength === "0" || contentLength === null) {
+      throw new Error("Request body is empty");
+    }
+
+    // Check content type
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Content-Type must be application/json");
+    }
+
     const body = await request.json();
+
+    // Check if body is empty object or null
+    if (!body || (typeof body === "object" && Object.keys(body).length === 0)) {
+      throw new Error("Request body cannot be empty");
+    }
+
     return body;
   } catch (error) {
-    throw new Error("Invalid JSON body");
+    if (error instanceof Error) {
+      throw error; // Re-throw our custom errors
+    }
+    throw new Error("Invalid JSON format in request body");
+  }
+}
+
+/**
+ * DEPRECATED: Use RequestValidator.fromRequest() instead
+ * @deprecated Use RequestValidator.fromRequest(request) for integrated parsing and validation
+ */
+async function safeParseBody(
+  request: Request
+): Promise<
+  { success: true; data: any } | { success: false; response: Response }
+> {
+  try {
+    const body = await parseAndValidateBody(request);
+    return { success: true, data: body };
+  } catch (error) {
+    return {
+      success: false,
+      response: ApiResponseBuilder.error(
+        error instanceof Error ? error.message : "Invalid request body",
+        400
+      ),
+    };
   }
 }
 
