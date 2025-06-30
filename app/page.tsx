@@ -1,7 +1,7 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniApp } from "@/providers/provider";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import frameSdk from "@farcaster/frame-sdk";
 import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
 import { LoginPage } from "@/modules/login";
@@ -12,14 +12,20 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useApiState } from "@/lib/hooks/use-api-state";
 import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
 import { useWalletSync } from "@/lib/hooks/use-wallet-sync";
+import { DesktopLayout, HeaderSection, LoadingLayout } from "@/components/layout";
+import { useGlobalContext } from "@/context/global-context";
+import { HomePage } from "@/modules/home";
+import { CartPage } from "@/modules/cart";
 
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
-  const { isSDKLoaded } = useMiniApp();
+  const { isSDKLoaded, isMiniApp } = useMiniApp();
   const { initLoginToFrame, loginToFrame } = useLoginToFrame();
   const { isConnected } = useAccount();
   const { post } = useAuthenticatedAPI();
   const { execute: registerUser } = useApiState();
+
+  const { activeModule } = useGlobalContext();
 
   // Automatically sync wallet changes to user database
   const walletSync = useWalletSync();
@@ -98,14 +104,15 @@ export default function Home() {
     }
   }, [authenticated]);
 
+  if (!isMiniApp) {
+    return (
+      <DesktopLayout />
+    );
+  }
+
   if (!ready) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <LoadingSpinner className="mx-auto mb-4" />
-          <p>Loading Privy...</p>
-        </div>
-      </div>
+      <LoadingLayout />
     );
   }
   console.log(user);
@@ -121,10 +128,22 @@ export default function Home() {
     );
   }
 
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="max-w-md mx-auto">
+          <LoginPage />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      <div className="max-w-md mx-auto">
-        <LoginPage />
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 to-blue-50">
+      <HeaderSection />
+      <div className="pb-8 mb-8 flex flex-1 flex-col">
+        {activeModule === 'home' && <HomePage />}
+        {activeModule === 'cart' && <CartPage />}
       </div>
       <BottomNavigation />
     </div>

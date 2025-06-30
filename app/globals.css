@@ -3,11 +3,29 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: 'Awesome Serif';
+  src: url('/fonts/AwesomeSerif-Regular.otf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Awesome Serif Italic';
+  src: url('/fonts/AwesomeSerifItalic-LightTall.otf') format('truetype');
+  font-weight: normal;
+  font-display: swap;
+}
+
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-inter: var(--font-inter);
+  --font-awesome: "Awesome Serif", serif;
+  --font-awesome-italic: "Awesome Serif Italic", serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -116,7 +134,13 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+
+.bg-fade-background {
+  background-color: #0000000A;
 }
