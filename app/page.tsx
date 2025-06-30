@@ -16,6 +16,7 @@ import { DesktopLayout, HeaderSection, LoadingLayout } from "@/components/layout
 import { useGlobalContext } from "@/context/global-context";
 import { HomePage } from "@/modules/home";
 import { CartPage } from "@/modules/cart";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
@@ -104,7 +105,9 @@ export default function Home() {
     }
   }, [authenticated]);
 
-  if (!isMiniApp) {
+  const isMobile = useIsMobile();
+
+  if (!isMobile) {
     return (
       <DesktopLayout />
     );

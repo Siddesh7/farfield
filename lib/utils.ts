@@ -12,6 +12,11 @@ export const trimAddress = (address: string | undefined, length: number) => {
   return `${address.slice(0, length)}....${address.slice(-length)}`;
 }
 
+export const getTruncatedDescription = (desc: string, charLimit: number) => {
+  if (desc.length <= charLimit) return desc;
+  return desc.slice(0, charLimit) + '...';
+};
+
 export const FeaturedProducts: Product[] = [
   {
     _id: "1",

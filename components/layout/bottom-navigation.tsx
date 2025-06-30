@@ -1,7 +1,7 @@
 import {
+  HistoryIcon,
   HomeIcon,
   PlusIcon,
-  ReminderIcon,
   ShoppingIcon,
   UserIcon,
 } from "@/components/icons";
@@ -53,7 +53,7 @@ const BottomNavigation = () => {
         isActive={activeModule === "add-product"}
         onClick={() => handleModuleClick("add-product")}
       />
-      <ReminderIcon
+      <HistoryIcon
         width={28}
         isActive={activeModule === "reminder"}
         onClick={() => handleModuleClick("reminder")}

@@ -16,8 +16,8 @@ const ProductCard = ({
         <div onClick={() => {
             setSelectedProduct(product)
         }}
-            className='w-max flex-shrink-0 flex flex-col gap-3 rounded-xl pb-6 cursor-pointer'>
-            <div className="relative w-[170px] h-[195px] overflow-hidden rounded-xl">
+            className='w-[-webkit-fill-available] flex-shrink-0 flex flex-col gap-3 rounded-xl pb-6 cursor-pointer'>
+            <div className="relative w-[-webkit-fill-available] h-[195px] overflow-hidden rounded-sm">
                 <Image
                     src='/Product_Image.png'
                     alt='product Image'
@@ -25,8 +25,8 @@ const ProductCard = ({
                     style={{ objectFit: 'cover' }}
                     className="rounded-xl"
                 />
-                <div className='absolute top-2 left-2 flex gap-2 bg-white rounded-md px-2 py-1 items-center shadow'>
-                    <CircleUser /> Art
+                <div className='absolute top-2 left-2 flex gap-2 bg-white rounded-[4px] px-1.5 py-1 items-center shadow'>
+                    <CircleUser size={20} /> Art
                 </div>
             </div>
 

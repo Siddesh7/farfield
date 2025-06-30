@@ -8,6 +8,8 @@ import { ArrowLeft, CirclePlus, Ellipsis, SendHorizontal } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState } from 'react';
 import { toast } from "sonner";
+import { CommentComponent } from './comment-component';
+import { getTruncatedDescription } from '@/lib/utils';
 
 const ProductComponent = ({
     product
@@ -17,28 +19,35 @@ const ProductComponent = ({
 
     const [comment, setComment] = useState<string>('')
     const { addToCart, cart } = useGlobalContext();
-
-    console.log("product ", product);
+    const [showFullDescription, setShowFullDescription] = useState(false);
 
     const isInCart = cart.some((p) => p._id === product._id);
 
     return (
         <>
             {/* Image Container */}
-            <div className=''>
+            <div className='relative w-[-webkit-fill-available] h-[250px]'>
                 <Image
                     src='/Product_Image.png'
                     alt='Product Image'
-                    height={250}
-                    width={350}
+                    fill
                 />
             </div>
 
             {/* Body Component */}
-            <div className='flex flex-col gap-11 pb-9'>
+            <div className='flex flex-col gap-11 pt-5.5'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
-                        <div></div>
+                        <div className='flex gap-2 bg-fade-background w-max px-2 py-1 rounded-md items-center'>
+                            <Image
+                                src='/profile.jpg'
+                                alt={`User `}
+                                width={30}
+                                height={30}
+                                className='rounded-md'
+                            />
+                            <p className='p-0 text-sm'>Saxenasaheb</p>
+                        </div>
                         <p className='font-inter text-lg font-medium'>{product.name}</p>
                         <div className='flex justify-between items-center'>
                             <div className='flex items-center'>
@@ -49,48 +58,60 @@ const ProductComponent = ({
                                             key={idx}
                                             src='/profile.jpg'
                                             alt={`User ${idx + 1}`}
-                                            width={40}
-                                            height={40}
-                                            className='rounded-xl'
+                                            width={30}
+                                            height={30}
+                                            className='rounded-md'
                                             style={{ zIndex: idx }}
                                         />
                                     ))}
                                 </div>
                             </div>
 
-                            <div>
+                            <div className='flex gap-2 items-center bg-blue'>
+                                <div className="flex items-center justify-center">
+                                    <Image
+                                        src="/USDC.jpg"
+                                        alt='USDC'
+                                        width={30}
+                                        height={30}
+                                        className="rounded-md"
+                                    />
+                                </div>
                                 <p className='font-semibold text-xl'>${product.price}</p>
                             </div>
                         </div>
-                        <p className='font-inter text-sm font-normal text-[#0000007A]'>{product.description}</p>
-                    </div>
-                    <div className='flex my-3 h-auto border-dashed border rounded-lg'>
-                        <Input
-                            value={comment}
-                            onChange={(e) => setComment(e.target.value)}
-                            placeholder='Add Any Comment'
-                            className='bg-fade-background flex-1 rounded-tr-none rounded-br-none h-auto'
-                        />
-                        <Button size='lg' className='bg-fade-background text-[#0000007A] rounded-tl-none rounded-bl-none'> Send <SendHorizontal /> </Button>
-                    </div>
-
-                    {product.comments.map((comment) => (
-                        <div className='flex justify-between'>
-                            <div className='flex flex-col gap-1' >
-                                <div className='flex gap-1 items-center'>
-                                    <Image src='/profile.jpg' alt='Profile' width={28} height={28} className='rounded-md' />
-                                    <p className='p-0 text-[#000000A3]'>Saxenasaheb</p>
-                                </div>
-                                <p className='p-o text-[#0000007A]'>{comment.comment}</p>
-                            </div>
-                            <Ellipsis color='#0000007A' />
+                        {/* Description with View More/Less */}
+                        <div>
+                            <p className='font-inter text-sm font-normal text-[#0000007A]'>
+                                {showFullDescription
+                                    ? product.description
+                                    : getTruncatedDescription(product.description, 150)
+                                }
+                                {product.description.length > 150 && (
+                                    <Button
+                                        variant="link"
+                                        className="p-0 h-auto min-h-0 text-blue-600 text-xs font-semibold ml-1 align-baseline"
+                                        onClick={() => setShowFullDescription((prev) => !prev)}
+                                    >
+                                        {showFullDescription ? 'View Less' : 'View More'}
+                                    </Button>
+                                )}
+                            </p>
                         </div>
-                    ))}
+                    </div>
+                    <CommentComponent
+                        comment={comment}
+                        setComment={setComment}
+                        user_comments={product.comments}
+                    />
                 </div>
+            </div>
 
+
+            <div className="fixed left-0 bottom-10 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-4 z-50">
                 <Button
                     size='lg'
-                    className={`font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    className={`w-full font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
                     onClick={() => {
                         if (!isInCart) {
                             addToCart(product);
@@ -102,10 +123,7 @@ const ProductComponent = ({
                     <CirclePlus />
                     {isInCart ? 'Added to Cart' : 'Add to Cart'}
                 </Button>
-
             </div>
-
-
 
         </>
     );
