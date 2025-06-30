@@ -113,7 +113,6 @@ const ProductSchema = new Schema<IProduct>(
       type: String,
       required: true,
       maxlength: 200,
-      index: true,
     },
     description: {
       type: String,
@@ -144,7 +143,6 @@ const ProductSchema = new Schema<IProduct>(
     hasExternalLinks: {
       type: Boolean,
       required: true,
-      index: true,
     },
     digitalFiles: [DigitalFileSchema],
     externalLinks: [ExternalLinkSchema],
@@ -153,23 +151,19 @@ const ProductSchema = new Schema<IProduct>(
     creatorFid: {
       type: Number,
       required: true,
-      index: true,
     },
     slug: {
       type: String,
       unique: true,
       sparse: true,
-      index: true,
     },
     category: {
       type: String,
       required: true,
-      index: true,
     },
     tags: [
       {
         type: String,
-        index: true,
       },
     ],
 
@@ -177,7 +171,6 @@ const ProductSchema = new Schema<IProduct>(
     isFree: {
       type: Boolean,
       default: false,
-      index: true,
     },
     totalSold: {
       type: Number,

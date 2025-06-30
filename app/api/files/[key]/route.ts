@@ -4,9 +4,14 @@ import {
   withErrorHandling,
 } from "@/lib/utils/api-response";
 import { RequestValidator } from "@/lib/utils/validation";
+import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { Product } from "@/models/product";
+import { Purchase } from "@/models/purchase";
+import { User } from "@/models/user";
 
 async function getFileHandler(
   request: Request,
+  authenticatedUser: AuthenticatedUser,
   { params }: { params: Promise<{ key: string }> }
 ) {
   const { key } = await params;
@@ -19,7 +24,34 @@ async function getFileHandler(
     return validator.getErrorResponse()!;
   }
 
-  console.log(`Fetching file with key: ${key}`);
+  // Find the product that references this file key
+  const product = (await Product.findOne({
+    "digitalFiles.fileUrl": key,
+  }).lean()) as any;
+  if (!product) {
+    return ApiResponseBuilder.notFound("File not found in any product");
+  }
+
+  // Get user
+  const user = await (User as any).findByPrivyId(authenticatedUser.privyId);
+  if (!user) {
+    return ApiResponseBuilder.unauthorized("User not found");
+  }
+
+  // Check access: creator or purchased
+  const isCreator = product.creatorFid === user.farcasterFid;
+  let hasPurchased = false;
+  if (!isCreator) {
+    const purchase = await Purchase.findOne({
+      buyerFid: user.farcasterFid,
+      status: "completed",
+      "items.productId": product._id.toString(),
+    });
+    hasPurchased = !!purchase;
+  }
+  if (!isCreator && !hasPurchased) {
+    return ApiResponseBuilder.error("You do not have access to this file", 403);
+  }
 
   try {
     const stream = await getFileStream(key);
@@ -46,4 +78,4 @@ async function getFileHandler(
   }
 }
 
-export const GET = withErrorHandling(getFileHandler);
+export const GET = withErrorHandling(withAuth(getFileHandler));
