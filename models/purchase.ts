@@ -36,12 +36,10 @@ const PurchaseSchema = new Schema<IPurchase>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
     buyerFid: {
       type: Number,
       required: true,
-      index: true,
     },
     buyerWallet: {
       type: String,
@@ -78,7 +76,6 @@ const PurchaseSchema = new Schema<IPurchase>(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
     },
     completedAt: {
       type: Date,
