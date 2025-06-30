@@ -8,6 +8,12 @@ import {
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useAccount, useSendTransaction } from "wagmi";
+import {
+  FARFIELD_CONTRACT_ADDRESS,
+  usdcContract,
+  usdcUtils,
+} from "@/lib/blockchain";
 
 interface TestResult {
   endpoint: string;
@@ -50,6 +56,8 @@ export default function TestPage() {
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
+  const { address, isConnected } = useAccount();
+  const { sendTransactionAsync } = useSendTransaction();
 
   // Form data states
   const [productForm, setProductForm] = useState<ProductFormData>({
@@ -99,6 +107,31 @@ export default function TestPage() {
   );
   const [ratingValue, setRatingValue] = useState(5);
   const [manualProductId, setManualProductId] = useState("");
+
+  // --- Buy Product (Onchain) State ---
+  const [buyStep, setBuyStep] = useState<
+    "init" | "signing" | "confirming" | "done"
+  >("init");
+  const [buyLoading, setBuyLoading] = useState(false);
+  const [buyError, setBuyError] = useState<string | null>(null);
+  const [buyTxs, setBuyTxs] = useState<any[]>([]);
+  const [buyPurchaseId, setBuyPurchaseId] = useState<string | null>(null);
+  const [buyFinalTxHash, setBuyFinalTxHash] = useState<string | null>(null);
+
+  // --- Approve USDC State ---
+  const [approveLoading, setApproveLoading] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [approveSuccess, setApproveSuccess] = useState<string | null>(null);
+
+  // --- Purchased Products State ---
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [purchaseHistory, setPurchaseHistory] = useState<any>(null);
+
+  // --- Product Access State ---
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [productAccess, setProductAccess] = useState<any>(null);
 
   // Helper to get current product ID (manual override or auto-generated)
   const getCurrentProductId = () => {
@@ -625,6 +658,182 @@ export default function TestPage() {
     }
   };
 
+  // --- Buy Product (Onchain) Logic ---
+  const runBuyStep = async (name: string, fn: () => Promise<any>) => {
+    setBuyError(null);
+    setBuyLoading(true);
+    addResult({ endpoint: name, status: "pending" });
+    const start = Date.now();
+    try {
+      const data = await fn();
+      addResult({
+        endpoint: name,
+        status: "success",
+        data,
+        duration: Date.now() - start,
+      });
+      return data;
+    } catch (e: any) {
+      addResult({
+        endpoint: name,
+        status: "error",
+        error: e.message,
+        duration: Date.now() - start,
+      });
+      setBuyError(e.message);
+      throw e;
+    } finally {
+      setBuyLoading(false);
+    }
+  };
+
+  const initiateBuy = async () => {
+    setBuyStep("init");
+    setBuyError(null);
+    setBuyTxs([]);
+    setBuyPurchaseId(null);
+    setBuyFinalTxHash(null);
+    const productId = getCurrentProductId();
+    if (!productId) return;
+    await runBuyStep("POST /api/purchase/initiate", async () => {
+      const res = await post("/api/purchase/initiate", {
+        items: [{ productId }],
+        buyerWallet: address,
+      });
+      setBuyTxs(res.data.transactions);
+      setBuyPurchaseId(res.data.purchaseId);
+      setBuyStep("signing");
+      return res;
+    });
+  };
+
+  const executeBuyTxs = async () => {
+    setBuyError(null);
+    setBuyStep("signing");
+    await runBuyStep("wallet.sendTransaction (purchase)", async () => {
+      let lastTxHash = null;
+      for (const tx of buyTxs) {
+        const hash = await sendTransactionAsync({
+          to: tx.to,
+          data: tx.data,
+          value: BigInt(0),
+          chainId: 84532,
+        });
+        lastTxHash = hash;
+      }
+      setBuyFinalTxHash(lastTxHash);
+      setBuyStep("confirming");
+      return { txHash: lastTxHash };
+    });
+  };
+
+  const confirmBuy = async () => {
+    setBuyStep("confirming");
+    setBuyError(null);
+    await runBuyStep("POST /api/purchase/confirm", async () => {
+      const res = await post("/api/purchase/confirm", {
+        purchaseId: buyPurchaseId,
+        transactionHash: buyFinalTxHash,
+      });
+      setBuyStep("done");
+      return res;
+    });
+  };
+
+  // Approve USDC for Farfield contract
+  const handleApproveUSDC = async () => {
+    setApproveLoading(true);
+    setApproveError(null);
+    setApproveSuccess(null);
+    try {
+      // Approve a large amount (100,000 USDC)
+      const amount = usdcUtils.toUnits(100000);
+      const approvalTx = usdcContract.generateApprovalTransaction(
+        FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
+        amount
+      );
+      const hash = await sendTransactionAsync({
+        to: approvalTx.to as `0x${string}`,
+        data: approvalTx.data,
+        value: BigInt(0),
+        gas: BigInt(50000),
+      });
+      setApproveSuccess(hash);
+      addResult({
+        endpoint: "wallet.sendTransaction (approve USDC)",
+        status: "success",
+        data: { txHash: hash },
+      });
+    } catch (e: any) {
+      setApproveError(e.message);
+      addResult({
+        endpoint: "wallet.sendTransaction (approve USDC)",
+        status: "error",
+        error: e.message,
+      });
+    } finally {
+      setApproveLoading(false);
+    }
+  };
+
+  // Fetch purchase history
+  const fetchPurchaseHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    setPurchaseHistory(null);
+    try {
+      const res = await get("/api/purchase/history?page=1&limit=10");
+      setPurchaseHistory(res.data);
+    } catch (e: any) {
+      setHistoryError(e.message);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Fetch product access for current product
+  const fetchProductAccess = async () => {
+    setAccessLoading(true);
+    setAccessError(null);
+    setProductAccess(null);
+    const productId = getCurrentProductId();
+    if (!productId) {
+      setAccessError("No product ID available.");
+      setAccessLoading(false);
+      return;
+    }
+    try {
+      const res = await get(`/api/products/${productId}/access`);
+      setProductAccess(res.data);
+    } catch (e: any) {
+      setAccessError(e.message);
+    } finally {
+      setAccessLoading(false);
+    }
+  };
+
+  // Use authenticatedFetch for file download with auth token
+  const handleAuthenticatedDownload = async (file: {
+    url: string;
+    fileName: string;
+  }) => {
+    try {
+      const response = await authenticatedFetch(file.url, { method: "GET" });
+      if (!response.ok) throw new Error("Download failed");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert("Download failed: " + err.message);
+    }
+  };
+
   // Form component for product creation
   const ProductForm = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -759,7 +968,10 @@ export default function TestPage() {
               </label>
               <div className="space-y-2">
                 {productForm.digitalFiles.map((file, index) => (
-                  <div key={index} className="grid grid-cols-3 gap-2">
+                  <div
+                    key={index}
+                    className="grid grid-cols-4 gap-2 items-center"
+                  >
                     <input
                       type="text"
                       placeholder="File name"
@@ -776,17 +988,10 @@ export default function TestPage() {
                     />
                     <input
                       type="text"
-                      placeholder="File URL"
+                      placeholder="File key"
                       className="p-2 border border-gray-300 rounded-md"
                       value={file.fileUrl}
-                      onChange={(e) => {
-                        const newFiles = [...productForm.digitalFiles];
-                        newFiles[index] = { ...file, fileUrl: e.target.value };
-                        setProductForm({
-                          ...productForm,
-                          digitalFiles: newFiles,
-                        });
-                      }}
+                      readOnly
                     />
                     <input
                       type="number"
@@ -805,8 +1010,23 @@ export default function TestPage() {
                         });
                       }}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveFile(index)}
+                    >
+                      Remove
+                    </Button>
                   </div>
                 ))}
+              </div>
+              <div className="mt-2">
+                <input
+                  type="file"
+                  accept="image/*,application/pdf,text/plain,application/json"
+                  onChange={handleFileUpload}
+                />
               </div>
             </div>
           ) : (
@@ -1051,6 +1271,46 @@ export default function TestPage() {
       </div>
     </div>
   );
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/files/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProductForm((prev) => ({
+          ...prev,
+          digitalFiles: [
+            ...(Array.isArray(prev.digitalFiles) ? prev.digitalFiles : []),
+            {
+              fileName: data.data.originalName,
+              fileUrl: data.data.fileKey,
+              fileSize: data.data.size,
+            },
+          ],
+        }));
+      } else {
+        alert(data.error || "File upload failed");
+      }
+    } catch (err) {
+      alert("File upload failed");
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setProductForm((prev) => ({
+      ...prev,
+      digitalFiles: prev.digitalFiles.filter(
+        (_: any, i: number) => i !== index
+      ),
+    }));
+  };
 
   if (!ready) {
     return (
@@ -1329,6 +1589,185 @@ export default function TestPage() {
               >
                 🔒 DELETE Product
               </Button>
+              <Button
+                onClick={initiateBuy}
+                disabled={
+                  isRunning ||
+                  !getCurrentProductId() ||
+                  !isConnected ||
+                  buyLoading ||
+                  buyStep !== "init"
+                }
+                size="sm"
+                className="bg-blue-700 hover:bg-blue-800 text-white"
+              >
+                🛒 Buy Product (Onchain)
+              </Button>
+            </div>
+
+            {/* Buy Product Flow UI */}
+            {(buyStep !== "init" || buyLoading || buyError) && (
+              <div className="mt-4 p-4 bg-blue-50 rounded border border-blue-200 max-w-xl">
+                {/* Approve USDC Button (before sign/send) */}
+                {buyStep === "signing" && (
+                  <div className="mb-2 flex flex-col gap-2">
+                    <Button
+                      onClick={handleApproveUSDC}
+                      disabled={approveLoading}
+                      variant="outline"
+                      className="w-fit"
+                    >
+                      {approveLoading
+                        ? "Approving..."
+                        : "Approve USDC for Farfield"}
+                    </Button>
+                    {approveError && (
+                      <div className="text-red-600 text-xs">{approveError}</div>
+                    )}
+                    {approveSuccess && (
+                      <div className="text-green-700 text-xs break-all">
+                        Approved! Tx: {approveSuccess}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {buyStep === "signing" && buyTxs.length > 0 && (
+                  <Button
+                    onClick={executeBuyTxs}
+                    disabled={buyLoading}
+                    className="mb-2"
+                  >
+                    Sign & Send Transactions
+                  </Button>
+                )}
+                {buyStep === "confirming" && buyFinalTxHash && (
+                  <Button
+                    onClick={confirmBuy}
+                    disabled={buyLoading}
+                    className="mb-2"
+                  >
+                    Confirm Purchase
+                  </Button>
+                )}
+                {buyError && (
+                  <div className="text-red-600 my-2">{buyError}</div>
+                )}
+                {buyStep === "done" && (
+                  <>
+                    <div className="text-green-700 font-bold">
+                      Purchase complete!
+                    </div>
+                    {/* Fetch product access if not already fetched for this product */}
+                    {buyPurchaseId &&
+                      getCurrentProductId() &&
+                      (!productAccess ||
+                        productAccess.productId !== getCurrentProductId()) && (
+                        <Button
+                          onClick={fetchProductAccess}
+                          className="mt-2"
+                          variant="outline"
+                        >
+                          Check Product Access
+                        </Button>
+                      )}
+                    {/* Show download buttons or links if access is available */}
+                    {productAccess &&
+                      productAccess.hasAccess &&
+                      productAccess.productId === getCurrentProductId() && (
+                        <div className="mt-4">
+                          {productAccess.downloadUrls &&
+                            productAccess.downloadUrls.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="font-semibold text-sm">
+                                  Downloadable Files:
+                                </div>
+                                {productAccess.downloadUrls.map(
+                                  (file: any, idx: number) => (
+                                    <Button
+                                      key={idx}
+                                      variant="secondary"
+                                      className="mt-1"
+                                      onClick={() =>
+                                        handleAuthenticatedDownload(file)
+                                      }
+                                    >
+                                      Download {file.fileName} ({file.fileSize}{" "}
+                                      bytes)
+                                    </Button>
+                                  )
+                                )}
+                              </div>
+                            )}
+                          {productAccess.externalLinks &&
+                            productAccess.externalLinks.length > 0 && (
+                              <div className="space-y-2">
+                                <div className="font-semibold text-sm">
+                                  External Links:
+                                </div>
+                                {productAccess.externalLinks.map(
+                                  (link: any, idx: number) => (
+                                    <a
+                                      key={idx}
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block text-blue-600 underline mt-1"
+                                    >
+                                      {link.name} ({link.type})
+                                    </a>
+                                  )
+                                )}
+                              </div>
+                            )}
+                        </div>
+                      )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Purchase History & Product Access */}
+            <div className="mt-6 flex flex-col gap-4">
+              {/* Purchase History */}
+              <div>
+                <Button
+                  onClick={fetchPurchaseHistory}
+                  disabled={historyLoading}
+                  variant="outline"
+                >
+                  {historyLoading ? "Loading..." : "Get My Purchased Products"}
+                </Button>
+                {historyError && (
+                  <div className="text-red-600 text-xs mt-1">
+                    {historyError}
+                  </div>
+                )}
+                {purchaseHistory && (
+                  <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-60">
+                    {JSON.stringify(purchaseHistory, null, 2)}
+                  </pre>
+                )}
+              </div>
+              {/* Product Access */}
+              <div>
+                <Button
+                  onClick={fetchProductAccess}
+                  disabled={accessLoading || !getCurrentProductId()}
+                  variant="outline"
+                >
+                  {accessLoading
+                    ? "Loading..."
+                    : "Check Product Access (Current ID)"}
+                </Button>
+                {accessError && (
+                  <div className="text-red-600 text-xs mt-1">{accessError}</div>
+                )}
+                {productAccess && (
+                  <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-60">
+                    {JSON.stringify(productAccess, null, 2)}
+                  </pre>
+                )}
+              </div>
             </div>
           </div>
         </div>
