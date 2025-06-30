@@ -71,6 +71,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/favicon1.png" type="image/png" />
+        <meta name="theme-color" content="#000000" />
+        {/* Add to homescreen for Chrome on Android */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="application-name" content="Farfield" />
+        {/* Add to homescreen for Safari on iOS */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+        <meta name="apple-mobile-web-app-title" content="Farfield" />
+        <link rel="apple-touch-icon" href="/favicon1.png" />
         {/* Frame meta tags for better compatibility */}
         <meta property="fc:frame" content="vNext" />
         <meta property="fc:frame:image" content={`${appUrl}/api/og`} />
