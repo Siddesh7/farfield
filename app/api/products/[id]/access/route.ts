@@ -14,16 +14,16 @@ interface RouteParams {
 async function productAccessHandler(
   request: Request,
   authenticatedUser: AuthenticatedUser,
-  { params }: RouteParams
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
+  const { id: productId } = await params;
   const privyId = authenticatedUser.privyId;
   const user = await (User as any).findByPrivyId(privyId);
   if (!user) {
     return ApiResponseBuilder.notFound("User not found");
   }
   const fid = user.farcasterFid;
-  const productId = params.id;
   if (!productId) {
     return ApiResponseBuilder.error(
       "Product ID is required",
