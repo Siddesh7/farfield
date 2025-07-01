@@ -20,7 +20,7 @@ const BottomNavigation = () => {
     [setActiveModule]
   );
 
-  const [insets, setInsets] = useState({ top: 0, bottom: 5, left: 0, right: 0 });
+  const [insets, setInsets] = useState({ top: 0, bottom: 15, left: 0, right: 0 });
 
   useEffect(() => {
     (async () => {
@@ -37,7 +37,7 @@ const BottomNavigation = () => {
         paddingBottom: insets.bottom,
         background: '#fff',
       }}
-      className="flex justify-between fixed bottom-0 w-full px-10 py-3 z-10">
+      className="flex justify-between fixed bottom-0 w-full px-10 py-3 z-10 bg-white">
       <HomeIcon
         width={28}
         isActive={activeModule === "home"}

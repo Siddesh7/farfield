@@ -15,6 +15,7 @@ async function getFileHandler(
   { params }: { params: Promise<{ key: string }> }
 ) {
   const { key } = await params;
+  console.log("key >>>", key);
 
   // Validate key parameter
   const validator = new RequestValidator();

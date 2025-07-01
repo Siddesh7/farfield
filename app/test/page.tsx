@@ -296,15 +296,15 @@ export default function TestPage() {
     // Clean up payload based on hasExternalLinks
     const payload = basePayload.hasExternalLinks
       ? {
-          ...basePayload,
-          digitalFiles: undefined,
-          externalLinks: basePayload.externalLinks,
-        }
+        ...basePayload,
+        digitalFiles: undefined,
+        externalLinks: basePayload.externalLinks,
+      }
       : {
-          ...basePayload,
-          externalLinks: undefined,
-          digitalFiles: basePayload.digitalFiles,
-        };
+        ...basePayload,
+        externalLinks: undefined,
+        digitalFiles: basePayload.digitalFiles,
+      };
 
     const result = await runTest(
       "POST /api/products",
@@ -1785,13 +1785,12 @@ export default function TestPage() {
               {results.map((result, index) => (
                 <div
                   key={index}
-                  className={`p-4 rounded-lg border-l-4 ${
-                    result.status === "success"
+                  className={`p-4 rounded-lg border-l-4 ${result.status === "success"
                       ? "bg-green-50 border-green-400"
                       : result.status === "error"
-                      ? "bg-red-50 border-red-400"
-                      : "bg-yellow-50 border-yellow-400"
-                  }`}
+                        ? "bg-red-50 border-red-400"
+                        : "bg-yellow-50 border-yellow-400"
+                    }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-semibold">{result.endpoint}</h3>
@@ -1802,13 +1801,12 @@ export default function TestPage() {
                         </span>
                       )}
                       <span
-                        className={`px-2 py-1 text-xs rounded ${
-                          result.status === "success"
+                        className={`px-2 py-1 text-xs rounded ${result.status === "success"
                             ? "bg-green-200 text-green-800"
                             : result.status === "error"
-                            ? "bg-red-200 text-red-800"
-                            : "bg-yellow-200 text-yellow-800"
-                        }`}
+                              ? "bg-red-200 text-red-800"
+                              : "bg-yellow-200 text-yellow-800"
+                          }`}
                       >
                         {result.status}
                       </span>

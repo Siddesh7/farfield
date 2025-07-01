@@ -3,6 +3,7 @@ import { Product } from '@/lib/types/product';
 import { CircleUser } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
+import AuthenticatedImage from './authenticated-image';
 
 const ProductCard = ({
     product
@@ -25,6 +26,7 @@ const ProductCard = ({
                     style={{ objectFit: 'cover' }}
                     className="rounded-xl"
                 />
+                {/* <AuthenticatedImage fileKey={product.images[0]} alt="Product File" /> */}
                 <div className='absolute top-2 left-2 flex gap-2 bg-white rounded-[4px] px-1.5 py-1 items-center shadow'>
                     <CircleUser size={20} /> Art
                 </div>

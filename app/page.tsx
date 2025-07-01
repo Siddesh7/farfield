@@ -17,6 +17,7 @@ import { useGlobalContext } from "@/context/global-context";
 import { HomePage } from "@/modules/home";
 import { CartPage } from "@/modules/cart";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { CreateProduct } from "@/modules/createProduct";
 
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
@@ -147,6 +148,7 @@ export default function Home() {
       <div className="pb-8 mb-8 flex flex-1 flex-col">
         {activeModule === 'home' && <HomePage />}
         {activeModule === 'cart' && <CartPage />}
+        {activeModule === 'add-product' && <CreateProduct />}
       </div>
       <BottomNavigation />
     </div>

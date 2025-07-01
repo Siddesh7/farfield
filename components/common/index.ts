@@ -6,3 +6,4 @@ export {
 export { WalletSyncStatus } from "./wallet-sync-status";
 export * from "./box-container";
 export * from "./product-card";
+export { default as AuthenticatedImage } from "./authenticated-image";

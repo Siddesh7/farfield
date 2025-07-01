@@ -25,7 +25,7 @@ const HeaderSection = () => {
                 }} />
             </div> : (
                 <h1 className="font-awesome-italic text-2xl font-medium">
-                    {activeModule === 'home' && 'Farfield'}
+                    {(activeModule === 'home' || activeModule === 'cart') && 'Farfield'}
                     {activeModule === 'add-product' && 'Add Product'}
                 </h1>
             )}

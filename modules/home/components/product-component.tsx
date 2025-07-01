@@ -21,6 +21,8 @@ const ProductComponent = ({
     const { addToCart, cart } = useGlobalContext();
     const [showFullDescription, setShowFullDescription] = useState(false);
 
+    console.log("product", product);
+
     const isInCart = cart.some((p) => p._id === product._id);
 
     return (
@@ -53,7 +55,7 @@ const ProductComponent = ({
                             <div className='flex items-center'>
                                 <p className='text-sm font-normal text-[#0000007A]'>Brought by:</p>
                                 <div className='flex -space-x-4 ml-2'>
-                                    {product.buyer.map((_, idx) => (
+                                    {[1, 2, 3].map((_, idx) => (
                                         <Image
                                             key={idx}
                                             src='/profile.jpg'
@@ -108,7 +110,7 @@ const ProductComponent = ({
             </div>
 
 
-            <div className="fixed left-0 bottom-10 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-4 z-50">
+            <div className="fixed left-0 bottom-12 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-6 pb-8">
                 <Button
                     size='lg'
                     className={`w-full font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}

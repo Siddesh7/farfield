@@ -25,17 +25,13 @@ const CartPage = () => {
                 </ScrollArea>
             </div>
 
-            <div className='fixed left-0 bottom-10 w-full bg-white flex flex-col gap-4 p-5.5 z-10'>
+            <div className='fixed left-0 bottom-12 w-full bg-white flex flex-col gap-4 p-5.5 z-10 pb-8'>
                 <div className='flex w-full justify-between items-center'>
                     <p className='text-lg'>Total:</p>
                     <p className='text-xl'>${cart.reduce((sum, p) => sum + (p.price || 0), 0).toFixed(2)}</p>
                 </div>
                 <Button size='lg' disabled={cart.length === 0}>Proceed to Checkout</Button>
             </div>
-
-
-
-
         </BoxContainer>
     );
 };

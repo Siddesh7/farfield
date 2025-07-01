@@ -68,11 +68,15 @@ export function useAuthenticatedAPI() {
 
   const post = useCallback(
     async (url: string, data?: any) => {
-      const response = await authenticatedFetch(url, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-      return response.json();
+      try {
+        const response = await authenticatedFetch(url, {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        return response.json();
+      } catch (error) {
+        throw new Error(`Error in posting: ${error}`)
+      }
     },
     [authenticatedFetch]
   );
