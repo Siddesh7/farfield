@@ -5,7 +5,7 @@ import {
   useAuthenticatedAPI,
   useAuthenticatedFetch,
 } from "@/lib/hooks/use-authenticated-fetch";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useAccount, useSendTransaction } from "wagmi";
@@ -40,9 +40,20 @@ interface ProductFormData {
     url: string;
     type: string;
   }>;
+  previewFiles: Array<{
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+  }>;
+  previewLinks: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>;
   tags: string[] | string;
   fileFormat: string[] | string;
   discountPercentage?: number;
+  previewAvailable?: boolean;
 }
 
 export default function TestPage() {
@@ -67,17 +78,8 @@ export default function TestPage() {
     price: 29.99,
     category: "Design",
     hasExternalLinks: false,
-    images: [
-      "https://example.com/image1.jpg",
-      "https://example.com/image2.jpg",
-    ],
-    digitalFiles: [
-      {
-        fileName: "test-file.pdf",
-        fileUrl: "https://example.com/files/test-file.pdf",
-        fileSize: 1024000,
-      },
-    ],
+    images: [],
+    digitalFiles: [],
     externalLinks: [
       {
         name: "Figma File",
@@ -85,6 +87,8 @@ export default function TestPage() {
         type: "figma",
       },
     ],
+    previewFiles: [],
+    previewLinks: [],
     tags: ["test", "api", "figma"],
     fileFormat: ["PDF", "Figma"],
     discountPercentage: 10,
@@ -132,6 +136,38 @@ export default function TestPage() {
   const [accessLoading, setAccessLoading] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [productAccess, setProductAccess] = useState<any>(null);
+
+  // Inside TestPage component
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  useEffect(() => {
+    const fetchImagesWithAuth = async () => {
+      if (!productAccess || !productAccess.images || !authenticated) {
+        setImageUrls([]);
+        return;
+      }
+      const urls = await Promise.all(
+        productAccess.images.map(async (imgKey: string) => {
+          try {
+            const res = await authenticatedFetch(`/api/files/${imgKey}`, {
+              method: "GET",
+            });
+            if (!res.ok) return "";
+            const blob = await res.blob();
+            return URL.createObjectURL(blob);
+          } catch {
+            return "";
+          }
+        })
+      );
+      setImageUrls(urls);
+    };
+    fetchImagesWithAuth();
+    // Cleanup: revoke object URLs on unmount or change
+    return () => {
+      imageUrls.forEach((url) => url && URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productAccess, authenticated]);
 
   // Helper to get current product ID (manual override or auto-generated)
   const getCurrentProductId = () => {
@@ -293,19 +329,42 @@ export default function TestPage() {
         : productForm.images.split(",").map((i: string) => i.trim()),
     };
 
+    // Only include preview fields if non-empty
+    const basePayloadWithOptional = basePayload as Partial<typeof basePayload>;
+    const hasPreviewFiles =
+      productForm.previewFiles && productForm.previewFiles.length > 0;
+    const hasPreviewLinks =
+      productForm.previewLinks && productForm.previewLinks.length > 0;
+
+    if (hasPreviewFiles) {
+      basePayloadWithOptional.previewFiles = productForm.previewFiles;
+    } else {
+      delete basePayloadWithOptional.previewFiles;
+    }
+    if (hasPreviewLinks) {
+      basePayloadWithOptional.previewLinks = productForm.previewLinks;
+    } else {
+      delete basePayloadWithOptional.previewLinks;
+    }
+    if (hasPreviewFiles || hasPreviewLinks) {
+      basePayloadWithOptional.previewAvailable = true;
+    } else {
+      delete basePayloadWithOptional.previewAvailable;
+    }
+
     // Clean up payload based on hasExternalLinks
-    const payload = basePayload.hasExternalLinks
+    const payload = basePayloadWithOptional.hasExternalLinks
       ? {
-          ...basePayload,
+          ...basePayloadWithOptional,
           digitalFiles: undefined,
-          externalLinks: basePayload.externalLinks,
+          externalLinks: basePayloadWithOptional.externalLinks,
         }
       : {
-          ...basePayload,
+          ...basePayloadWithOptional,
           externalLinks: undefined,
-          digitalFiles: basePayload.digitalFiles,
+          digitalFiles: basePayloadWithOptional.digitalFiles,
         };
-
+    console.log("payload", payload);
     const result = await runTest(
       "POST /api/products",
       () => post("/api/products", payload),
@@ -904,22 +963,66 @@ export default function TestPage() {
 
           <div>
             <label className="block text-sm font-medium mb-1">
-              Images (comma-separated URLs)
+              Product Images
             </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {Array.isArray(productForm.images) &&
+                productForm.images.length > 0 &&
+                productForm.images.map((img, idx) => (
+                  <div key={idx} className="relative w-20 h-20">
+                    <img
+                      src={typeof img === "string" ? img : ""}
+                      alt={`Product image ${idx + 1}`}
+                      className="object-cover w-full h-full rounded border"
+                    />
+                    <button
+                      type="button"
+                      className="absolute top-0 right-0 bg-white bg-opacity-80 rounded-full p-1 text-xs"
+                      onClick={() => {
+                        setProductForm((prev) => ({
+                          ...prev,
+                          images: Array.isArray(prev.images)
+                            ? prev.images.filter((_, i) => i !== idx)
+                            : [],
+                        }));
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+            </div>
             <input
-              type="text"
-              className="w-full p-2 border border-gray-300 rounded-md"
-              value={
-                Array.isArray(productForm.images)
-                  ? productForm.images.join(", ")
-                  : productForm.images
-              }
-              onChange={(e) =>
-                setProductForm({
-                  ...productForm,
-                  images: e.target.value.split(",").map((i) => i.trim()),
-                })
-              }
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={async (e) => {
+                const files = Array.from(e.target.files || []);
+                for (const file of files) {
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  try {
+                    const res = await fetch("/api/files/upload", {
+                      method: "POST",
+                      body: formData,
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setProductForm((prev) => ({
+                        ...prev,
+                        images: [
+                          ...(Array.isArray(prev.images) ? prev.images : []),
+                          data.data.fileKey,
+                        ],
+                      }));
+                    } else {
+                      alert(data.error || "Image upload failed");
+                    }
+                  } catch (err) {
+                    alert("Image upload failed");
+                  }
+                }
+              }}
             />
           </div>
 
@@ -962,131 +1065,340 @@ export default function TestPage() {
           </div>
 
           {!productForm.hasExternalLinks ? (
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Digital Files
-              </label>
-              <div className="space-y-2">
-                {productForm.digitalFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="grid grid-cols-4 gap-2 items-center"
-                  >
-                    <input
-                      type="text"
-                      placeholder="File name"
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={file.fileName}
-                      onChange={(e) => {
-                        const newFiles = [...productForm.digitalFiles];
-                        newFiles[index] = { ...file, fileName: e.target.value };
-                        setProductForm({
-                          ...productForm,
-                          digitalFiles: newFiles,
-                        });
-                      }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="File key"
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={file.fileUrl}
-                      readOnly
-                    />
-                    <input
-                      type="number"
-                      placeholder="File size (bytes)"
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={file.fileSize}
-                      onChange={(e) => {
-                        const newFiles = [...productForm.digitalFiles];
-                        newFiles[index] = {
-                          ...file,
-                          fileSize: parseInt(e.target.value),
-                        };
-                        setProductForm({
-                          ...productForm,
-                          digitalFiles: newFiles,
-                        });
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRemoveFile(index)}
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Digital Files
+                </label>
+                <div className="space-y-2">
+                  {productForm.digitalFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-4 gap-2 items-center"
                     >
-                      Remove
-                    </Button>
-                  </div>
-                ))}
+                      <input
+                        type="text"
+                        placeholder="File name"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileName}
+                        onChange={(e) => {
+                          const newFiles = [...productForm.digitalFiles];
+                          newFiles[index] = {
+                            ...file,
+                            fileName: e.target.value,
+                          };
+                          setProductForm({
+                            ...productForm,
+                            digitalFiles: newFiles,
+                          });
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="File key"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileUrl}
+                        readOnly
+                      />
+                      <input
+                        type="number"
+                        placeholder="File size (bytes)"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileSize}
+                        onChange={(e) => {
+                          const newFiles = [...productForm.digitalFiles];
+                          newFiles[index] = {
+                            ...file,
+                            fileSize: parseInt(e.target.value),
+                          };
+                          setProductForm({
+                            ...productForm,
+                            digitalFiles: newFiles,
+                          });
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemoveFile(index)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf,text/plain,application/json"
+                    onChange={handleFileUpload}
+                  />
+                </div>
               </div>
-              <div className="mt-2">
-                <input
-                  type="file"
-                  accept="image/*,application/pdf,text/plain,application/json"
-                  onChange={handleFileUpload}
-                />
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Preview Files
+                </label>
+                <div className="space-y-2">
+                  {productForm.previewFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="grid grid-cols-4 gap-2 items-center"
+                    >
+                      <input
+                        type="text"
+                        placeholder="File name"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileName}
+                        onChange={(e) => {
+                          const newFiles = [...productForm.previewFiles];
+                          newFiles[index] = {
+                            ...file,
+                            fileName: e.target.value,
+                          };
+                          setProductForm({
+                            ...productForm,
+                            previewFiles: newFiles,
+                          });
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="File key"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileUrl}
+                        readOnly
+                      />
+                      <input
+                        type="number"
+                        placeholder="File size (bytes)"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={file.fileSize}
+                        onChange={(e) => {
+                          const newFiles = [...productForm.previewFiles];
+                          newFiles[index] = {
+                            ...file,
+                            fileSize: parseInt(e.target.value),
+                          };
+                          setProductForm({
+                            ...productForm,
+                            previewFiles: newFiles,
+                          });
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            previewFiles: prev.previewFiles.filter(
+                              (_, i) => i !== index
+                            ),
+                          }));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf,text/plain,application/json"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append("file", file);
+                      try {
+                        const res = await fetch("/api/files/upload", {
+                          method: "POST",
+                          body: formData,
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            previewFiles: [
+                              ...(Array.isArray(prev.previewFiles)
+                                ? prev.previewFiles
+                                : []),
+                              {
+                                fileName: data.data.originalName,
+                                fileUrl: data.data.fileKey,
+                                fileSize: data.data.size,
+                              },
+                            ],
+                          }));
+                        } else {
+                          alert(data.error || "File upload failed");
+                        }
+                      } catch (err) {
+                        alert("File upload failed");
+                      }
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            </>
           ) : (
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                External Links
-              </label>
-              <div className="space-y-2">
-                {productForm.externalLinks.map((link, index) => (
-                  <div key={index} className="grid grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Link name"
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={link.name}
-                      onChange={(e) => {
-                        const newLinks = [...productForm.externalLinks];
-                        newLinks[index] = { ...link, name: e.target.value };
-                        setProductForm({
-                          ...productForm,
-                          externalLinks: newLinks,
-                        });
-                      }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="URL"
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={link.url}
-                      onChange={(e) => {
-                        const newLinks = [...productForm.externalLinks];
-                        newLinks[index] = { ...link, url: e.target.value };
-                        setProductForm({
-                          ...productForm,
-                          externalLinks: newLinks,
-                        });
-                      }}
-                    />
-                    <select
-                      className="p-2 border border-gray-300 rounded-md"
-                      value={link.type}
-                      onChange={(e) => {
-                        const newLinks = [...productForm.externalLinks];
-                        newLinks[index] = { ...link, type: e.target.value };
-                        setProductForm({
-                          ...productForm,
-                          externalLinks: newLinks,
-                        });
-                      }}
-                    >
-                      <option value="figma">Figma</option>
-                      <option value="notion">Notion</option>
-                      <option value="behance">Behance</option>
-                      <option value="github">GitHub</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                ))}
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  External Links
+                </label>
+                <div className="space-y-2">
+                  {productForm.externalLinks.map((link, index) => (
+                    <div key={index} className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Link name"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.name}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.externalLinks];
+                          newLinks[index] = { ...link, name: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            externalLinks: newLinks,
+                          });
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="URL"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.url}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.externalLinks];
+                          newLinks[index] = { ...link, url: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            externalLinks: newLinks,
+                          });
+                        }}
+                      />
+                      <select
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.type}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.externalLinks];
+                          newLinks[index] = { ...link, type: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            externalLinks: newLinks,
+                          });
+                        }}
+                      >
+                        <option value="figma">Figma</option>
+                        <option value="notion">Notion</option>
+                        <option value="behance">Behance</option>
+                        <option value="github">GitHub</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium mb-1">
+                  Preview Links
+                </label>
+                <div className="space-y-2">
+                  {productForm.previewLinks.map((link, index) => (
+                    <div key={index} className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Link name"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.name}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.previewLinks];
+                          newLinks[index] = { ...link, name: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            previewLinks: newLinks,
+                          });
+                        }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="URL"
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.url}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.previewLinks];
+                          newLinks[index] = { ...link, url: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            previewLinks: newLinks,
+                          });
+                        }}
+                      />
+                      <select
+                        className="p-2 border border-gray-300 rounded-md"
+                        value={link.type}
+                        onChange={(e) => {
+                          const newLinks = [...productForm.previewLinks];
+                          newLinks[index] = { ...link, type: e.target.value };
+                          setProductForm({
+                            ...productForm,
+                            previewLinks: newLinks,
+                          });
+                        }}
+                      >
+                        <option value="figma">Figma</option>
+                        <option value="notion">Notion</option>
+                        <option value="behance">Behance</option>
+                        <option value="github">GitHub</option>
+                        <option value="other">Other</option>
+                      </select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setProductForm((prev) => ({
+                            ...prev,
+                            previewLinks: prev.previewLinks.filter(
+                              (_, i) => i !== index
+                            ),
+                          }));
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setProductForm((prev) => ({
+                        ...prev,
+                        previewLinks: [
+                          ...(Array.isArray(prev.previewLinks)
+                            ? prev.previewLinks
+                            : []),
+                          { name: "", url: "", type: "other" },
+                        ],
+                      }));
+                    }}
+                  >
+                    Add Preview Link
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
 
           <div>
@@ -1675,13 +1987,28 @@ export default function TestPage() {
                       productAccess.hasAccess &&
                       productAccess.productId === getCurrentProductId() && (
                         <div className="mt-4">
-                          {productAccess.downloadUrls &&
-                            productAccess.downloadUrls.length > 0 && (
+                          {/* Product Images */}
+                          {imageUrls.length > 0 && (
+                            <div className="flex gap-2 overflow-x-auto mb-4">
+                              {imageUrls.map((url, idx) =>
+                                url ? (
+                                  <img
+                                    key={idx}
+                                    src={url}
+                                    alt={`Product image ${idx + 1}`}
+                                    className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                                  />
+                                ) : null
+                              )}
+                            </div>
+                          )}
+                          {productAccess.previewFiles &&
+                            productAccess.previewFiles.length > 0 && (
                               <div className="space-y-2">
                                 <div className="font-semibold text-sm">
-                                  Downloadable Files:
+                                  Preview Files:
                                 </div>
-                                {productAccess.downloadUrls.map(
+                                {productAccess.previewFiles.map(
                                   (file: any, idx: number) => (
                                     <Button
                                       key={idx}
@@ -1691,27 +2018,27 @@ export default function TestPage() {
                                         handleAuthenticatedDownload(file)
                                       }
                                     >
-                                      Download {file.fileName} ({file.fileSize}{" "}
-                                      bytes)
+                                      Download Preview {file.fileName} (
+                                      {file.fileSize} bytes)
                                     </Button>
                                   )
                                 )}
                               </div>
                             )}
-                          {productAccess.externalLinks &&
-                            productAccess.externalLinks.length > 0 && (
+                          {productAccess.previewLinks &&
+                            productAccess.previewLinks.length > 0 && (
                               <div className="space-y-2">
                                 <div className="font-semibold text-sm">
-                                  External Links:
+                                  Preview Links:
                                 </div>
-                                {productAccess.externalLinks.map(
+                                {productAccess.previewLinks.map(
                                   (link: any, idx: number) => (
                                     <a
                                       key={idx}
                                       href={link.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="block text-blue-600 underline mt-1"
+                                      className="text-blue-600 underline mt-1"
                                     >
                                       {link.name} ({link.type})
                                     </a>
@@ -1763,9 +2090,143 @@ export default function TestPage() {
                   <div className="text-red-600 text-xs mt-1">{accessError}</div>
                 )}
                 {productAccess && (
-                  <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-60">
-                    {JSON.stringify(productAccess, null, 2)}
-                  </pre>
+                  <div className="mt-8 flex justify-center">
+                    <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-xl border border-gray-200">
+                      {/* Product Image */}
+                      {imageUrls.length > 0 && (
+                        <div className="flex gap-2 overflow-x-auto mb-4">
+                          {imageUrls.map((url, idx) =>
+                            url ? (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`Product image ${idx + 1}`}
+                                className="w-24 h-24 object-cover rounded-lg border shadow-sm"
+                              />
+                            ) : null
+                          )}
+                        </div>
+                      )}
+                      {/* Product Title & Description */}
+                      <h2 className="text-2xl font-bold mb-2">
+                        {productAccess.productTitle}
+                      </h2>
+                      <div className="text-gray-600 mb-4">
+                        Product ID: {productAccess.productId}
+                      </div>
+                      {/* Preview Files */}
+                      {productAccess.previewFiles &&
+                        productAccess.previewFiles.length > 0 && (
+                          <div className="mb-4">
+                            <div className="font-semibold text-sm mb-1">
+                              Preview Files:
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {productAccess.previewFiles.map(
+                                (file: any, idx: number) => (
+                                  <Button
+                                    key={idx}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleAuthenticatedDownload(file)
+                                    }
+                                  >
+                                    Download Preview {file.fileName}
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      {/* Preview Links */}
+                      {productAccess.previewLinks &&
+                        productAccess.previewLinks.length > 0 && (
+                          <div className="mb-4">
+                            <div className="font-semibold text-sm mb-1">
+                              Preview Links:
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {productAccess.previewLinks.map(
+                                (link: any, idx: number) => (
+                                  <a
+                                    key={idx}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    {link.name} ({link.type})
+                                  </a>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      {/* Digital Files */}
+                      {productAccess.downloadUrls &&
+                        productAccess.downloadUrls.length > 0 && (
+                          <div className="mb-4">
+                            <div className="font-semibold text-sm mb-1">
+                              Digital Files:
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {productAccess.downloadUrls.map(
+                                (file: any, idx: number) => (
+                                  <Button
+                                    key={idx}
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() =>
+                                      handleAuthenticatedDownload(file)
+                                    }
+                                  >
+                                    Download {file.fileName}
+                                  </Button>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      {/* External Links */}
+                      {productAccess.externalLinks &&
+                        productAccess.externalLinks.length > 0 && (
+                          <div className="mb-4">
+                            <div className="font-semibold text-sm mb-1">
+                              External Links:
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              {productAccess.externalLinks.map(
+                                (link: any, idx: number) => (
+                                  <a
+                                    key={idx}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    {link.name} ({link.type})
+                                  </a>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      {/* Access Info */}
+                      <div className="text-xs text-gray-500 mt-2">
+                        <div>
+                          Access:{" "}
+                          {productAccess.hasAccess ? "Granted" : "Denied"}
+                        </div>
+                        <div>
+                          Creator: {productAccess.isCreator ? "Yes" : "No"}
+                        </div>
+                        <div>
+                          Purchased: {productAccess.hasPurchased ? "Yes" : "No"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

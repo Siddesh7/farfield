@@ -42,8 +42,16 @@ export type Product = {
 
   // Preview
   previewAvailable: boolean;
-  previewFile?: string;
-  previewLink?: string;
+  previewFiles?: {
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+  }[];
+  previewLinks?: {
+    name: string;
+    url: string;
+    type: "figma" | "notion" | "behance" | "other";
+  }[];
 
   // Discount
   discountPercentage?: number;

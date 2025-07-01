@@ -24,33 +24,48 @@ async function getFileHandler(
     return validator.getErrorResponse()!;
   }
 
-  // Find the product that references this file key
+  // Find the product that references this file key (digital, preview, or image)
   const product = (await Product.findOne({
-    "digitalFiles.fileUrl": key,
+    $or: [
+      { "digitalFiles.fileUrl": key },
+      { "previewFiles.fileUrl": key },
+      { images: key },
+    ],
   }).lean()) as any;
   if (!product) {
     return ApiResponseBuilder.notFound("File not found in any product");
   }
 
-  // Get user
-  const user = await (User as any).findByPrivyId(authenticatedUser.privyId);
-  if (!user) {
-    return ApiResponseBuilder.unauthorized("User not found");
-  }
+  // Check if this is a preview file or image
+  const isPreview =
+    product.previewFiles &&
+    product.previewFiles.some((f: any) => f.fileUrl === key);
+  const isImage = product.images && product.images.includes(key);
 
-  // Check access: creator or purchased
-  const isCreator = product.creatorFid === user.farcasterFid;
-  let hasPurchased = false;
-  if (!isCreator) {
-    const purchase = await Purchase.findOne({
-      buyerFid: user.farcasterFid,
-      status: "completed",
-      "items.productId": product._id.toString(),
-    });
-    hasPurchased = !!purchase;
-  }
-  if (!isCreator && !hasPurchased) {
-    return ApiResponseBuilder.error("You do not have access to this file", 403);
+  if (!isPreview && !isImage) {
+    // Get user
+    const user = await (User as any).findByPrivyId(authenticatedUser.privyId);
+    if (!user) {
+      return ApiResponseBuilder.unauthorized("User not found");
+    }
+
+    // Check access: creator or purchased
+    const isCreator = product.creatorFid === user.farcasterFid;
+    let hasPurchased = false;
+    if (!isCreator) {
+      const purchase = await Purchase.findOne({
+        buyerFid: user.farcasterFid,
+        status: "completed",
+        "items.productId": product._id.toString(),
+      });
+      hasPurchased = !!purchase;
+    }
+    if (!isCreator && !hasPurchased) {
+      return ApiResponseBuilder.error(
+        "You do not have access to this file",
+        403
+      );
+    }
   }
 
   try {
