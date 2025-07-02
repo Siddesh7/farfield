@@ -17,6 +17,7 @@ const MiniAppContext = createContext<{
   isSDKLoaded: boolean;
   context: any;
   actions: any;
+  isMiniApp: boolean;
 } | null>(null);
 
 export const useMiniApp = () => {
@@ -30,15 +31,34 @@ export const useMiniApp = () => {
 function MiniAppProvider({ children }: { children: React.ReactNode }) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<any>(null);
+  const [isMiniApp, setIsMiniApp] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
-        // Check if we're in a Farcaster environment
-        if (typeof window !== "undefined") {
-          console.log("Window location:", window.location.href);
-          console.log("User agent:", navigator.userAgent);
+        let detectedMiniApp = false;
+        if (sdk && typeof sdk.isInMiniApp === 'function') {
+          try {
+            detectedMiniApp = await sdk.isInMiniApp();
+          } catch { }
+        } else if (typeof window !== "undefined") {
+          // Fallback: Heuristic user agent check
+          const ua = navigator.userAgent || "";
+          if (ua.includes("Farcaster") || ua.includes("Warpcast")) {
+            detectedMiniApp = true;
+          }
         }
+        // Try to detect via SDK context as well if not already detected
+        if (!detectedMiniApp && sdk && sdk.context) {
+          try {
+            const contextData = await sdk.context;
+            setContext(contextData);
+            if (contextData) {
+              detectedMiniApp = true;
+            }
+          } catch { }
+        }
+        setIsMiniApp(detectedMiniApp);
 
         if (!sdk) {
           console.log("SDK not available, setting mock context");
@@ -74,6 +94,7 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
         isSDKLoaded,
         context,
         actions: sdk?.actions || null,
+        isMiniApp,
       }}
     >
       {children}
