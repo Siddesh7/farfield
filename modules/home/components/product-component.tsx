@@ -1,10 +1,7 @@
-import { HeaderSection } from '@/components/layout';
 import { Button } from '@/components/ui';
-import { Input } from '@/components/ui/input';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
-import { ArrowLeft, CirclePlus, Ellipsis, SendHorizontal } from 'lucide-react';
+import { CirclePlus } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState } from 'react';
 import { toast } from "sonner";
@@ -26,16 +23,17 @@ const ProductComponent = ({
     return (
         <>
             {/* Image Container */}
-            <div className='relative w-[-webkit-fill-available] h-[250px]'>
+            <div className='relative w-[-webkit-fill-available] h-[350px]'>
                 <Image
                     src='/Product_Image.png'
                     alt='Product Image'
                     fill
+                    className='rounded-none'
                 />
             </div>
 
             {/* Body Component */}
-            <div className='flex flex-col gap-11 pt-5.5'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>

@@ -7,10 +7,9 @@ import { ProductComponent } from './components/product-component';
 const HomePage = () => {
 
     const { selectedProduct } = useGlobalContext();
-    console.log("selected product", selectedProduct);
 
     return (
-        <BoxContainer className='flex flex-col pt-5 px-5.5'>
+        <BoxContainer className='flex flex-col'>
 
             {selectedProduct ? (
                 <ProductComponent product={selectedProduct} />

@@ -18,7 +18,7 @@ const HomeComponent = () => {
     const topProduct = FeaturedProducts[0];
 
     return (
-        <>
+        <div className='pt-22 px-5.5'>
             <SearchFilter />
 
             <ScrollArea className="rounded-md whitespace-nowrap">
@@ -67,7 +67,7 @@ const HomeComponent = () => {
                     <ScrollBar orientation="vertical" />
                 </ScrollArea>
             </div>
-        </>
+        </div>
     );
 };
 
