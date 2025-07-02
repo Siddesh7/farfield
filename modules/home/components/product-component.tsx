@@ -38,29 +38,29 @@ const ProductComponent = ({
             <div className='flex flex-col gap-11 pt-5.5'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
-                        <div className='flex gap-2 bg-fade-background w-max px-2 py-1 rounded-md items-center'>
+                        <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
                             <Image
                                 src='/profile.jpg'
                                 alt={`User `}
-                                width={30}
-                                height={30}
-                                className='rounded-md'
+                                width={20}
+                                height={20}
+                                className='rounded-xs'
                             />
-                            <p className='p-0 text-sm'>Saxenasaheb</p>
+                            <p className='p-0 text-sm text-[#000000A3]'>Saxenasaheb</p>
                         </div>
                         <p className='font-inter text-lg font-medium'>{product.name}</p>
                         <div className='flex justify-between items-center'>
                             <div className='flex items-center'>
-                                <p className='text-sm font-normal text-[#0000007A]'>Brought by:</p>
+                                <p className='text-sm font-normal text-fade'>Bought by:</p>
                                 <div className='flex -space-x-4 ml-2'>
                                     {product.buyer.map((_, idx) => (
                                         <Image
                                             key={idx}
                                             src='/profile.jpg'
                                             alt={`User ${idx + 1}`}
-                                            width={30}
-                                            height={30}
-                                            className='rounded-md'
+                                            width={22}
+                                            height={22}
+                                            className='rounded-xs'
                                             style={{ zIndex: idx }}
                                         />
                                     ))}
@@ -72,8 +72,8 @@ const ProductComponent = ({
                                     <Image
                                         src="/USDC.jpg"
                                         alt='USDC'
-                                        width={30}
-                                        height={30}
+                                        width={24}
+                                        height={24}
                                         className="rounded-md"
                                     />
                                 </div>
@@ -82,7 +82,7 @@ const ProductComponent = ({
                         </div>
                         {/* Description with View More/Less */}
                         <div>
-                            <p className='font-inter text-sm font-normal text-[#0000007A]'>
+                            <p className='font-inter text-sm font-normal text-fade'>
                                 {showFullDescription
                                     ? product.description
                                     : getTruncatedDescription(product.description, 150)
@@ -108,7 +108,7 @@ const ProductComponent = ({
             </div>
 
 
-            <div className="fixed left-0 bottom-10 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-4 z-50">
+            <div className="fixed left-0 bottom-12 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-6 pb-8">
                 <Button
                     size='lg'
                     className={`w-full font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}

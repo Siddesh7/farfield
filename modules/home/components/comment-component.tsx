@@ -18,14 +18,14 @@ const CommentComponent: FC<CommentComponentProps> = ({
 }) => {
     return (
         <>
-            <div className='flex my-3 h-auto border-dashed border rounded-lg'>
+            <div className='flex my-3 h-auto border-dashed border-3 rounded-lg'>
                 <Input
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder='Add Any Comment'
-                    className='bg-fade-background flex-1 rounded-tr-none rounded-br-none h-auto'
+                    className='bg-fade-background text-[#000000A3] flex-1 rounded-tr-none rounded-br-none h-auto'
                 />
-                <Button size='lg' className='bg-fade-background text-[#0000007A] rounded-tl-none rounded-bl-none'> Send <SendHorizontal /> </Button>
+                <Button size='lg' className='bg-fade-background text-fade rounded-tl-none rounded-bl-none'> Send <SendHorizontal /> </Button>
             </div>
 
             <div className='flex flex-col gap-4 pb-16'>
@@ -36,7 +36,7 @@ const CommentComponent: FC<CommentComponentProps> = ({
                                 <Image src='/profile.jpg' alt='Profile' width={28} height={28} className='rounded-md' />
                                 <p className='p-0 text-[#000000A3]'>Saxenasaheb</p>
                             </div>
-                            <p className='p-o text-[#0000007A]'>{comment.comment}</p>
+                            <p className='p-o text-fade'>{comment.comment}</p>
                         </div>
                         <Ellipsis color='#0000007A' />
                     </div>

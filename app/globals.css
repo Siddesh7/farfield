@@ -55,6 +55,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --radius-xs: calc(var(--radius) - 6px);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -143,4 +144,8 @@
 
 .bg-fade-background {
   background-color: #0000000A;
+}
+
+.text-fade {
+  color: #0000007A
 }

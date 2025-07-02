@@ -28,7 +28,7 @@ const HomeComponent = () => {
                             key={type}
                             onClick={() => setSelectedType(type)}
                             className={`px-4 py-2.5 font-inter rounded-lg cursor-pointer transition-all 
-                ${selectedType === type ? 'bg-[#000] text-white' : 'bg-[#0000000A] text-[#0000007A]'}`}
+                ${selectedType === type ? 'bg-[#000] text-white' : 'bg-[#0000000A] text-fade'}`}
                         >
                             {type}
                         </div>
@@ -57,7 +57,6 @@ const HomeComponent = () => {
             <div className='pt-6 flex gap-4 flex-col'>
                 <div className='flex justify-between items-center'>
                     <p className='font-awesome text-2xl'>All Products</p>
-                    <p className='text-sm font-medium text-[#0000007A]'>View all</p>
                 </div>
                 <ScrollArea className="rounded-md whitespace-nowrap flex">
                     <div className="grid grid-cols-2 gap-2.5 pt-4">

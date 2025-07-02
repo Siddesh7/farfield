@@ -39,7 +39,7 @@ const CartListItem = ({
                     aria-label="Remove from cart"
                     className="p-1 rounded hover:bg-gray-100"
                 >
-                    <X />
+                    <X size={16} color='#0000007A' />
                 </button>
             </div>
         </div>

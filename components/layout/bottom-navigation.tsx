@@ -20,7 +20,7 @@ const BottomNavigation = () => {
     [setActiveModule]
   );
 
-  const [insets, setInsets] = useState({ top: 0, bottom: 5, left: 0, right: 0 });
+  const [insets, setInsets] = useState({ top: 0, bottom: 15, left: 0, right: 0 });
 
   useEffect(() => {
     (async () => {
