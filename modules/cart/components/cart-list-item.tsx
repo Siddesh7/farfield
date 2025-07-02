@@ -33,7 +33,7 @@ const CartListItem = ({
             <div>
                 <button
                     onClick={() => {
-                        removeFromCart(product._id!);
+                        removeFromCart(product.id!);
                         toast.success('Removed from cart!');
                     }}
                     aria-label="Remove from cart"

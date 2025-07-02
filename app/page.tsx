@@ -1,12 +1,11 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniApp } from "@/providers/provider";
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import frameSdk from "@farcaster/frame-sdk";
 import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
 import { LoginPage } from "@/modules/login";
 import { useAccount } from "wagmi";
-import { ProfilePage } from "@/modules/profile";
 import BottomNavigation from "@/components/layout/bottom-navigation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useApiState } from "@/lib/hooks/use-api-state";

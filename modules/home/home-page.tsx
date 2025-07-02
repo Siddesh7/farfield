@@ -12,7 +12,6 @@ const HomePage = ({ products, setCategory }: { products: Product[], setCategory:
 
     return (
         <BoxContainer className='flex flex-col'>
-            {/* <AuthenticatedImage fileKey={fileKey} alt="Product File" /> */}
             {selectedProduct ? (
                 <ProductComponent product={selectedProduct} />
             ) : (

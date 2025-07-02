@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // next.config.js
+  images: {
+    domains: [
+      // other domains you may already have
+      "imagedelivery.net",
+    ],
+  },
   // async headers() {
   //   return [
   //     {
