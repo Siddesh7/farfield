@@ -62,7 +62,7 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 0, 2: 1, 3: 2, 4: 15, 5: 60 }
   },
   {
-    _id: "2",
+    id: "2",
     name: "Cool Background NCS Music with rock and pop by the best artist",
     description: "An all-in-one Notion workspace for startup founders to manage their business, fundraising, and goals.",
     images: ["https://example.com/startup-notion.png"],
@@ -93,7 +93,7 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 1, 2: 0, 3: 3, 4: 10, 5: 26 }
   },
   {
-    _id: "3",
+    id: "3",
     name: "Cool Background NCS Music with rock and pop by the best artist",
     description: "A vibrant collection of 50 high-quality abstract illustrations for commercial and personal use.",
     images: ["https://example.com/illustration-pack-cover.png"],
@@ -135,7 +135,7 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 0, 2: 0, 3: 1, 4: 4, 5: 20 }
   },
   {
-    _id: "4",
+    id: "4",
     name: "Ultimate Resume Template Bundle",
     description: "A bundle of 10 modern, ATS-friendly resume templates for professionals in tech and design.",
     images: ["https://example.com/resume-bundle.png"],
@@ -178,7 +178,7 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 0, 2: 2, 3: 3, 4: 10, 5: 40 }
   },
   {
-    _id: "5",
+    id: "5",
     name: "Crypto Portfolio Tracker Sheet",
     description: "A Google Sheets template to track your crypto investments, profits, and portfolio performance.",
     images: ["https://example.com/crypto-sheet.png"],
@@ -209,7 +209,7 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 0, 2: 1, 3: 2, 4: 5, 5: 10 }
   },
   {
-    _id: "6",
+    id: "6",
     name: "Minimalist Icon Set",
     description: "A set of 200+ minimalist SVG icons for web and mobile projects.",
     images: ["https://example.com/minimalist-icons.png"],
@@ -252,3 +252,26 @@ export const FeaturedProducts: Product[] = [
     ratingsBreakdown: { 1: 0, 2: 0, 3: 2, 4: 8, 5: 90 }
   }
 ]
+
+/**
+ * Returns a human-readable relative time string (e.g., '5 mins ago', '2 hours ago', '3 days ago')
+ * @param date Date object or ISO string
+ */
+export function formatTimeAgo(date: Date | string): string {
+  const now = new Date();
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000); // in seconds
+
+  if (isNaN(diff) || diff < 0) return '';
+  if (diff < 60) return 'just now';
+  if (diff < 3600) {
+    const mins = Math.floor(diff / 60);
+    return `${mins} min${mins > 1 ? 's' : ''} ago`;
+  }
+  if (diff < 86400) {
+    const hours = Math.floor(diff / 3600);
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  }
+  const days = Math.floor(diff / 86400);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}

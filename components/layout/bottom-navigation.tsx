@@ -55,8 +55,8 @@ const BottomNavigation = () => {
       />
       <HistoryIcon
         width={28}
-        isActive={activeModule === "reminder"}
-        onClick={() => handleModuleClick("reminder")}
+        isActive={activeModule === "history"}
+        onClick={() => handleModuleClick("history")}
       />
       <UserIcon
         width={28}

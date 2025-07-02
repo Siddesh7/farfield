@@ -6,12 +6,12 @@ import { ArrowUpRight } from 'lucide-react';
 const DesktopLayout = () => {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen">
-            <div className='flex flex-col items-center justify-center gap-15'>
+            <div className='flex flex-col items-center justify-center gap-15 z-50'>
                 <div className='font-awesome flex flex-col items-center gap-2'>
                     <p className='text-3xl text-[#00000066]'>Desktop version coming soon</p>
                     <p className='text-5xl '>Please open this app in Farcaster</p>
                 </div>
-                <Button size='lg' className='min-w-md'> Open In Farcaster <ArrowUpRight /></Button>
+                <Button size='lg' className='min-w-md ' > Open In Farcaster <ArrowUpRight /></Button>
             </div>
             <div className='fixed bottom-0'>
                 <Image

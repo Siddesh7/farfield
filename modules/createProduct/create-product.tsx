@@ -26,6 +26,11 @@ export type ProductFormVariables = {
         url: string;
         type: string;
     }>;
+    previewFiles: Array<{
+        fileName: string;
+        fileUrl: string;
+        fileSize: number;
+    }>;
     tags: string[] | string;
     fileFormat: string[] | string;
     discountPercentage?: number;
@@ -45,6 +50,7 @@ const defaultFormVariables: ProductFormVariables = {
     images: '',
     digitalFiles: [],
     externalLinks: [],
+    previewFiles: [],
     tags: '',
     fileFormat: '',
     coverImageFile: null,
@@ -54,7 +60,7 @@ const defaultFormVariables: ProductFormVariables = {
     productLink: '',
 };
 
-const CreateProduct = () => {
+const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void }) => {
 
     const { post } = useAuthenticatedAPI();
     const { setActiveModule } = useGlobalContext();
@@ -65,7 +71,7 @@ const CreateProduct = () => {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const [creatingProduct, setCreatingProduct] = useState(false);
-    const [publishingProduct, setPublishingProduct] = useState(false);
+    const [step, setStep] = useState<'idle' | 'creating' | 'publishing'>('idle');
 
     // Cover Image 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -152,13 +158,12 @@ const CreateProduct = () => {
         }));
     };
 
-    const handleCreateProduct = async (e: React.FormEvent) => {
+    const handleCreateAndPublishProduct = async (e: React.FormEvent) => {
         e.preventDefault();
-
         try {
             setCreatingProduct(true);
-            console.log("formVariables", formVariables);
-
+            setStep('creating');
+            // Step 1: Create Product
             const basePayload = {
                 name: formVariables.name,
                 description: formVariables.description,
@@ -167,22 +172,27 @@ const CreateProduct = () => {
                 hasExternalLinks: formVariables.hasExternalLinks
             }
 
-            let images: string[] = ['https://images.unsplash.com/photo-1749497683202-d3073573d996?q=80&w=2147&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'];
+            let images: string[] = [];
             if (formVariables.coverImageFile) {
                 const res = await uploadFile(formVariables.coverImageFile);
-                console.log("coverImageFile >>>", res);
                 if (res && res.fileKey) {
-                    const cleanFileKey = res.fileKey;
-                    images.push(cleanFileKey);
+                    images.push(res.fileKey);
                 }
             }
 
+            let previewFiles: {
+                fileName: string;
+                fileUrl: string;
+                fileSize: number;
+            }[] = [];
             if (formVariables.togglePreviewImage && formVariables.previewFile) {
                 const res = await uploadFile(formVariables.previewFile);
-                console.log("previewFile >>", res);
-                if (res && res.fileKey) {
-                    const cleanFileKey = res.fileKey;
-                    images.push(cleanFileKey);
+                if (res && res.fileKey && res.size && res.originalName) {
+                    previewFiles.push({
+                        fileName: res.originalName,
+                        fileUrl: res.fileKey,
+                        fileSize: res.size,
+                    });
                 }
             }
 
@@ -191,15 +201,13 @@ const CreateProduct = () => {
                 fileUrl: string;
                 fileSize: number;
             }[] = [];
-
             if (!formVariables.hasExternalLinks && formVariables.productFiles.length > 0) {
                 for (const file of formVariables.productFiles) {
                     const res = await uploadFile(file);
                     if (res && res.fileKey && res.size && res.originalName) {
-                        const cleanFileUrl = res.fileKey;
                         digitalFiles.push({
                             fileName: res.originalName,
-                            fileUrl: cleanFileUrl,
+                            fileUrl: res.fileKey,
                             fileSize: res.size,
                         });
                     }
@@ -212,59 +220,54 @@ const CreateProduct = () => {
                     images,
                     digitalFiles: undefined,
                     externalLinks: formVariables.externalLinks,
+                    previewFiles
                 }
                 : {
                     ...basePayload,
                     images,
                     externalLinks: undefined,
                     digitalFiles,
+                    previewFiles,
                 };
 
-            console.log("Payload", payload);
-
-
-            const res = await post("/api/products", payload)
-            console.log("res", res);
-
-            if (res.success) {
-                toast.success(res.message)
-                const data = res.data
-                setProductId(data.id);
-            } else {
-                toast.error(res.error)
+            const res = await post("/api/products", payload);
+            if (!res.success) {
+                toast.error(res.error);
+                setStep('idle');
+                setCreatingProduct(false);
+                return;
             }
+            const data = res.data;
+            const newProductId = data.id;
 
+            // Step 2: Publish Product
+            setStep('publishing');
+            const publishRes = await post(`/api/products/${newProductId}/publish`, { published: true });
+            if (publishRes.success) {
+                toast.success(publishRes.message);
+                refetchAllProducts();
+                setOpen(true);
+                setProductId(null);
+
+                setFormVariables(defaultFormVariables);
+                setErrors({});
+                setCoverImageURL(null);
+                setCoverError(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                if (previewFileInputRef.current) previewFileInputRef.current.value = '';
+                if (productFilesInputRef.current) productFilesInputRef.current.value = '';
+
+            } else {
+                toast.error(publishRes.error);
+            }
         } catch (error: any) {
-            console.log("Error in creating product", error);
-            toast.error(error.message)
+            console.log("Error in creating and publishing product", error);
+            toast.error(error.message);
         } finally {
             setCreatingProduct(false);
+            setStep('idle');
         }
-
     };
-
-    const handlePublishProduct = async () => {
-        try {
-            setPublishingProduct(true);
-            const res = await post(`/api/products/${productId}/publish`, {
-                published: true,
-            })
-
-            if (res.success) {
-                toast.success(res.message)
-                setProductId(null);
-                setOpen(true);
-            } else {
-                toast.error(res.error)
-            }
-
-        } catch (error) {
-            console.log("Errors in publishing product", error);
-        } finally {
-            setPublishingProduct(false);
-        }
-
-    }
 
     const validate = () => {
         const newErrors: { [key: string]: string } = {};
@@ -280,12 +283,12 @@ const CreateProduct = () => {
         const validationErrors = validate();
         setErrors(validationErrors);
         if (Object.keys(validationErrors).length === 0) {
-            handleCreateProduct(e);
+            handleCreateAndPublishProduct(e);
         }
     };
 
     return (
-        <BoxContainer className='flex flex-col gap-6 pt-5 px-5.5 flex-1'>
+        <BoxContainer className='flex flex-col gap-6 pt-5 px-5.5 flex-1 '>
             <AddProductForm
                 formVariables={formVariables}
                 setFormVariables={handleFormVariableChange}
@@ -304,35 +307,26 @@ const CreateProduct = () => {
             />
             <div className="flex gap-3 justify-end pb-9">
                 <Button className='flex-1' type="button" variant='outline' size="lg">Draft</Button>
-                {productId ? <Button className='flex-2' type="submit" onClick={handlePublishProduct} size='lg'>
-                    {publishingProduct ? (
-                        <>
-                            <div className='flex gap-1 items-center'>
-                                <LoadingSpinner size='sm' color='secondary' />
-                                Publishing...
-                            </div>
-                        </>
-                    ) : (
+                <Button className='flex-2' type="button" onClick={handleFormSubmit} disabled={creatingProduct} size='lg'>
+                    {step === 'creating' && (
                         <div className='flex gap-1 items-center'>
-                            Publish Product
+                            <LoadingSpinner size='sm' color='secondary' />
+                            Creating Product...
+                        </div>
+                    )}
+                    {step === 'publishing' && (
+                        <div className='flex gap-1 items-center'>
+                            <LoadingSpinner size='sm' color='secondary' />
+                            Publishing Product...
+                        </div>
+                    )}
+                    {step === 'idle' && (
+                        <div className='flex gap-1 items-center'>
+                            Create Product
                             <ArrowRight />
                         </div>
                     )}
-                </Button> : (
-                    <Button className='flex-2' type="button" onClick={handleFormSubmit} disabled={creatingProduct} size='lg'>
-                        {creatingProduct ? (
-                            <div className='flex gap-1 items-center'>
-                                <LoadingSpinner size='sm' color='secondary' />
-                                Creating...
-                            </div>
-                        ) : (
-                            <div className='flex gap-1 items-center'>
-                                Create Product
-                                <ArrowRight />
-                            </div>
-                        )}
-                    </Button>
-                )}
+                </Button>
             </div>
             <SuccessModal
                 open={open}

@@ -104,9 +104,9 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
 
 const queryClient = new QueryClient();
 const wagmiConfig = createConfig({
-  chains: [base, baseSepolia],
+  chains: [baseSepolia],
   transports: {
-    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || ""),
+    // [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || ""),
     [baseSepolia.id]: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || ""),
   },
 });

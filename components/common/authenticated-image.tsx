@@ -1,5 +1,7 @@
 import { useAuthenticatedFetch } from '@/lib/hooks';
+import Image from 'next/image';
 import React, { useEffect, useState } from 'react';
+import { LoadingSpinner } from '../ui';
 
 const AuthenticatedImage = ({ fileKey, alt }: { fileKey: string; alt?: string }) => {
     const { authenticatedFetch } = useAuthenticatedFetch();
@@ -34,15 +36,19 @@ const AuthenticatedImage = ({ fileKey, alt }: { fileKey: string; alt?: string })
         };
     }, [authenticatedFetch, fileKey]);
 
-    if (loading) return <div>Loading file...</div>;
+    if (loading) return null;
     if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
-    if (!imgUrl) return null;
+    if (!imgUrl) return (
+        <div className='relative w-[-webkit-fill-available] h-[250px]'>
+            <Image src='/Product_Image.png'
+                alt='Product Image'
+                fill style={{ objectFit: 'cover' }} />
+        </div>
+    );
 
     return (
-        <div>
-            <img src={imgUrl} alt={alt || "File"} style={{ maxWidth: 300, maxHeight: 300 }} />
-            <br />
-            <a href={imgUrl} download={fileKey.split("_").pop()}>Download</a>
+        <div className='relative w-[-webkit-fill-available] h-[275px]'>
+            <Image src={imgUrl} alt={alt || "File"} fill style={{ objectFit: 'cover' }} />
         </div>
     );
 };

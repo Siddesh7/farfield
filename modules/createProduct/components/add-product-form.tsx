@@ -63,11 +63,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     }, [dropdownOpen]);
 
     return (
-        <form className="flex flex-col gap-6 flex-1">
+        <form className="flex flex-col gap-6 flex-1 pt-22">
             {/* Cover Image Upload */}
             <div className="flex flex-col gap-2 ">
                 {coverImageURL ? (
-                    <div className="relative w-['-webkit-fill-available'] h-[180px] rounded overflow-hidden border">
+                    <div className="relative w-['-webkit-fill-available'] h-[250px] rounded overflow-hidden border">
                         <Image src={coverImageURL} alt="Cover" fill style={{ objectFit: 'cover' }} />
                         <Button type="button" variant="outline" className="absolute top-2 right-2 z-10" onClick={() => setCoverImageURL(null)}>Remove</Button>
                     </div>

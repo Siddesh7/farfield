@@ -41,13 +41,13 @@ export const GlobalContextProvider = ({
   const addToCart = (product: Product) => {
     setCart((prev) => {
       // Prevent duplicates by _id
-      if (prev.some((p) => p._id === product._id)) return prev;
+      if (prev.some((p) => p.id === product.id)) return prev;
       return [...prev, product];
     });
   };
 
   const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((p) => p._id !== productId));
+    setCart((prev) => prev.filter((p) => p.id !== productId));
   };
 
   const value = {
