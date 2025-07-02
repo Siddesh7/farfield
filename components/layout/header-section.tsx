@@ -42,8 +42,9 @@ const HeaderSection = () => {
                 <div className={`rounded-xl ${showBackArrow ? 'bg-white' : 'bg-[#0000000A]'}`}>
                     <Button
                         variant="outline"
-                        className="w-full"
+                        className={`w-full ${showBackArrow ? 'bg-white' : 'bg-[#0000000A]'}`}
                         onClick={linkWallet}
+
                     >
                         Connect Wallet
                     </Button>
