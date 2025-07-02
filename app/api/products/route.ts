@@ -207,6 +207,24 @@ async function createProductHandler(
           ]);
       });
     }
+    // Validate previewLinks if present
+    if (body.previewLinks && Array.isArray(body.previewLinks)) {
+      body.previewLinks.forEach((link: any, index: number) => {
+        validator
+          .required(link.name, `previewLinks[${index}].name`)
+          .string(link.name, `previewLinks[${index}].name`, 1, 100)
+          .required(link.url, `previewLinks[${index}].url`)
+          .string(link.url, `previewLinks[${index}].url`, 1, 500)
+          .required(link.type, `previewLinks[${index}].type`)
+          .enum(link.type, `previewLinks[${index}].type`, [
+            "figma",
+            "notion",
+            "behance",
+            "github",
+            "other",
+          ]);
+      });
+    }
   } else {
     validator
       .required(body.digitalFiles, "digitalFiles")
@@ -221,6 +239,18 @@ async function createProductHandler(
           .string(file.fileUrl, `digitalFiles[${index}].fileUrl`, 1, 500)
           .required(file.fileSize, `digitalFiles[${index}].fileSize`)
           .number(file.fileSize, `digitalFiles[${index}].fileSize`, 1);
+      });
+    }
+    // Validate previewFiles if present
+    if (body.previewFiles && Array.isArray(body.previewFiles)) {
+      body.previewFiles.forEach((file: any, index: number) => {
+        validator
+          .required(file.fileName, `previewFiles[${index}].fileName`)
+          .string(file.fileName, `previewFiles[${index}].fileName`, 1, 255)
+          .required(file.fileUrl, `previewFiles[${index}].fileUrl`)
+          .string(file.fileUrl, `previewFiles[${index}].fileUrl`, 1, 500)
+          .required(file.fileSize, `previewFiles[${index}].fileSize`)
+          .number(file.fileSize, `previewFiles[${index}].fileSize`, 1);
       });
     }
   }
@@ -256,7 +286,12 @@ async function createProductHandler(
   }
 
   // Create product
-  const productData = {
+  const hasPreviewFiles =
+    Array.isArray(body.previewFiles) && body.previewFiles.length > 0;
+  const hasPreviewLinks =
+    Array.isArray(body.previewLinks) && body.previewLinks.length > 0;
+
+  const productData: any = {
     ...body,
     creatorFid: creatorUser.farcasterFid,
     isFree: body.price === 0,
@@ -266,9 +301,14 @@ async function createProductHandler(
     ratingsBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
     comments: [],
     buyer: [],
-    previewAvailable: false,
   };
 
+  if (hasPreviewFiles || hasPreviewLinks) {
+    productData.previewAvailable = true;
+    if (hasPreviewFiles) productData.previewFiles = body.previewFiles;
+    if (hasPreviewLinks) productData.previewLinks = body.previewLinks;
+  }
+  console.log("productData", productData);
   const product = new Product(productData);
   await product.save();
 

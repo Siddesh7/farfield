@@ -43,8 +43,16 @@ export interface IProduct extends Document {
 
   // Preview
   previewAvailable: boolean;
-  previewFile?: string;
-  previewLink?: string;
+  previewFiles?: {
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+  }[];
+  previewLinks?: {
+    name: string;
+    url: string;
+    type: "figma" | "notion" | "behance" | "github" | "other";
+  }[];
 
   // Discount
   discountPercentage?: number;
@@ -192,12 +200,8 @@ const ProductSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
     },
-    previewFile: {
-      type: String,
-    },
-    previewLink: {
-      type: String,
-    },
+    previewFiles: [DigitalFileSchema],
+    previewLinks: [ExternalLinkSchema],
 
     // Discount
     discountPercentage: {
@@ -284,8 +288,12 @@ ProductSchema.pre("save", function (next) {
 
 // Validation: Preview file/link should only exist if previewAvailable is true
 ProductSchema.pre("save", function (next) {
-  if (!this.previewAvailable && (this.previewFile || this.previewLink)) {
-    next(
+  const hasPreviewFiles =
+    Array.isArray(this.previewFiles) && this.previewFiles.length > 0;
+  const hasPreviewLinks =
+    Array.isArray(this.previewLinks) && this.previewLinks.length > 0;
+  if ((hasPreviewFiles || hasPreviewLinks) && !this.previewAvailable) {
+    return next(
       new Error(
         "Preview file/link can only be set when previewAvailable is true"
       )

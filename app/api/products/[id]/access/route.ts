@@ -31,7 +31,9 @@ async function productAccessHandler(
     );
   }
   const product = (await Product.findById(productId)
-    .select("name price status creatorFid digitalFiles externalLinks")
+    .select(
+      "name price status creatorFid digitalFiles externalLinks previewFiles previewLinks images"
+    )
     .lean()) as any;
   if (!product) {
     return ApiResponseBuilder.notFound("Product not found");
@@ -58,6 +60,8 @@ async function productAccessHandler(
   }
   let downloadUrls = null;
   let externalLinks = null;
+  let previewFiles = null;
+  let previewLinks = null;
   if (hasAccess) {
     if (product.digitalFiles && product.digitalFiles.length > 0) {
       downloadUrls = product.digitalFiles.map((file: any) => ({
@@ -73,9 +77,25 @@ async function productAccessHandler(
         type: link.type,
       }));
     }
+    if (product.previewFiles && product.previewFiles.length > 0) {
+      previewFiles = product.previewFiles.map((file: any) => ({
+        fileName: file.fileName,
+        url: `/api/files/${file.fileUrl}`,
+        fileSize: file.fileSize,
+      }));
+    }
+    if (product.previewLinks && product.previewLinks.length > 0) {
+      previewLinks = product.previewLinks.map((link: any) => ({
+        name: link.name,
+        url: link.url,
+        type: link.type,
+      }));
+    }
   } else {
     downloadUrls = null;
     externalLinks = null;
+    previewFiles = null;
+    previewLinks = null;
   }
   const responseData = {
     productId,
@@ -91,6 +111,9 @@ async function productAccessHandler(
     },
     downloadUrls,
     externalLinks,
+    previewFiles,
+    previewLinks,
+    images: product.images || [],
   };
   return ApiResponseBuilder.success(
     responseData,
