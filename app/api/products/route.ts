@@ -156,6 +156,11 @@ async function createProductHandler(
 ) {
   await connectDB();
 
+  // Parse query param for publish
+  const url = new URL(request.url);
+  const publishParam = url.searchParams.get("publish");
+  const shouldPublish = publishParam === "true";
+
   const validator = await RequestValidator.fromRequest(request);
   if (!validator.isValid()) {
     return validator.getErrorResponse()!;
@@ -308,13 +313,54 @@ async function createProductHandler(
     if (hasPreviewFiles) productData.previewFiles = body.previewFiles;
     if (hasPreviewLinks) productData.previewLinks = body.previewLinks;
   }
-  console.log("productData", productData);
+
   const product = new Product(productData);
   await product.save();
 
+  // If publish=true, validate completeness and set publishedAt
+  if (shouldPublish) {
+    const validationErrors: string[] = [];
+    if (!product.name || product.name.trim().length === 0) {
+      validationErrors.push("Product name is required");
+    }
+    if (!product.description || product.description.trim().length === 0) {
+      validationErrors.push("Product description is required");
+    }
+    if (!product.images || product.images.length === 0) {
+      validationErrors.push("At least one product image is required");
+    }
+    if (!product.category || product.category.trim().length === 0) {
+      validationErrors.push("Product category is required");
+    }
+    if (product.hasExternalLinks) {
+      if (!product.externalLinks || product.externalLinks.length === 0) {
+        validationErrors.push(
+          "External links are required when hasExternalLinks is true"
+        );
+      }
+    } else {
+      if (!product.digitalFiles || product.digitalFiles.length === 0) {
+        validationErrors.push(
+          "Digital files are required when hasExternalLinks is false"
+        );
+      }
+    }
+    if (validationErrors.length > 0) {
+      return ApiResponseBuilder.error(
+        `Cannot publish incomplete product: ${validationErrors.join(", ")}`,
+        400
+      );
+    }
+    // Set publishedAt and save
+    product.publishedAt = new Date();
+    await product.save();
+  }
+
   return ApiResponseBuilder.success(
     product.toObject(),
-    "Product created successfully",
+    shouldPublish
+      ? "Product created and published successfully"
+      : "Product created successfully",
     201
   );
 }

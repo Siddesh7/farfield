@@ -69,6 +69,7 @@ export default function TestPage() {
   const [showRatingForm, setShowRatingForm] = useState(false);
   const { address, isConnected } = useAccount();
   const { sendTransactionAsync } = useSendTransaction();
+  const [autopublish, setAutopublish] = useState(false);
 
   // Form data states
   const [productForm, setProductForm] = useState<ProductFormData>({
@@ -365,9 +366,13 @@ export default function TestPage() {
           digitalFiles: basePayloadWithOptional.digitalFiles,
         };
     console.log("payload", payload);
+    let url = "/api/products";
+    if (autopublish) {
+      url += "?publish=true";
+    }
     const result = await runTest(
       "POST /api/products",
-      () => post("/api/products", payload),
+      () => post(url, payload),
       "Create new product (Protected)"
     );
 
@@ -1420,6 +1425,17 @@ export default function TestPage() {
                 })
               }
             />
+          </div>
+          <div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={autopublish}
+                onChange={(e) => setAutopublish(e.target.checked)}
+              />
+              Autopublish (publish immediately after creation)
+            </label>
           </div>
         </div>
 

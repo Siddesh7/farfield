@@ -90,6 +90,37 @@ curl -X POST "http://localhost:3000/api/products" \
   }'
 ```
 
+**Autopublish on Create**
+
+You can publish the product immediately after creation by passing the `publish=true` query parameter:
+
+```bash
+curl -X POST "http://localhost:3000/api/products?publish=true" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your_access_token>" \
+  -d '{
+    "name": "Figma UI Kit",
+    "description": "A modern UI kit for Figma.",
+    "price": 15,
+    "category": "design",
+    "images": ["https://..."],
+    "hasExternalLinks": false,
+    "digitalFiles": [
+      { "fileName": "kit.fig", "fileUrl": "file-123", "fileSize": 123456 }
+    ]
+  }'
+```
+
+**Query Parameters:**
+| Parameter | Type | Description | Default |
+|-----------|------|------------------------------------------------------|---------|
+| `publish` | boolean | If `true`, publishes the product immediately if valid | false |
+| `page` | number | Page number | 1 |
+| `limit` | number | Items per page (max 100) | 10 |
+| `status` | string | all, published, draft | all |
+| `sort` | string | Sort field | createdAt |
+| `order` | string | Sort direction: asc, desc | desc |
+
 ---
 
 ### 3. Get Product by ID
