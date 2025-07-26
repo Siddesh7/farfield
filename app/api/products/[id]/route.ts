@@ -46,6 +46,55 @@ async function getProductByIdHandler(
   const productObj = product.toObject();
   delete productObj.buyer;
 
+  // Fetch creator info
+  const creatorUser = await User.findOne({
+    farcasterFid: productObj.creatorFid,
+  });
+  let creatorInfo = null;
+  if (creatorUser) {
+    creatorInfo = {
+      fid: creatorUser.farcasterFid,
+      name: creatorUser.farcaster.displayName,
+      username: creatorUser.farcaster.username,
+      pfp: creatorUser.farcaster.pfp || null,
+    };
+  }
+  productObj.creator = creatorInfo;
+  delete productObj.creatorFid;
+
+  // Add commentsPreview: 3 latest comments with commentator info
+  const comments = productObj.comments || [];
+  const latestComments = comments
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 3);
+  const commentorFids = [
+    ...new Set(latestComments.map((c: any) => c.commentorFid)),
+  ];
+  const commentUsers = await User.find({
+    farcasterFid: { $in: commentorFids },
+  });
+  const commentUserMap = new Map(
+    commentUsers.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+  productObj.commentsPreview = latestComments.map((comment: any) => ({
+    ...comment,
+    commentor: commentUserMap.get(comment.commentorFid) || null,
+  }));
+
+  // Remove comments array from product response
+  delete productObj.comments;
+
   return ApiResponseBuilder.success(
     productObj,
     "Product retrieved successfully"

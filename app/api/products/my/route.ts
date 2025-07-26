@@ -96,8 +96,36 @@ async function getMyProductsHandler(
   // Return full product data for creator (including buyer information)
   const creatorProducts = products.map((product: any) => product.toObject());
 
+  // Batch fetch creator info (should be the same user, but future-proof for multiple creators)
+  const uniqueFids = [
+    ...new Set(creatorProducts.map((p: any) => p.creatorFid)),
+  ];
+  const users = await User.find({ farcasterFid: { $in: uniqueFids } });
+  const userMap = new Map(
+    users.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  // Attach creator info to each product
+  const productsWithCreator = creatorProducts.map((product: any) => {
+    const creator = userMap.get(product.creatorFid) || null;
+    // Remove comments from product
+    const { comments, ...rest } = product;
+    return {
+      ...rest,
+      creator,
+    };
+  });
+
   return ApiResponseBuilder.paginated(
-    creatorProducts,
+    productsWithCreator,
     query.page,
     query.limit,
     total,

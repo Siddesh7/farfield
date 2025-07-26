@@ -140,8 +140,84 @@ async function getProductsHandler(request: Request) {
     return productObj;
   });
 
+  // Batch fetch creator info for all products
+  const uniqueFids = [...new Set(publicProducts.map((p: any) => p.creatorFid))];
+  const users = await User.find({ farcasterFid: { $in: uniqueFids } });
+  const userMap = new Map(
+    users.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  // Attach creator info to each product
+  const productsWithCreator = publicProducts.map((product: any) => {
+    const creator = userMap.get(product.creatorFid) || null;
+    return {
+      ...product,
+      creator,
+    };
+  });
+
+  // Collect all commentorFids for preview comments across all products
+  const allPreviewComments = productsWithCreator.flatMap((product: any) => {
+    const comments = product.comments || [];
+    return comments
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 3)
+      .map((c: any) => ({ ...c, productId: product._id }));
+  });
+  const allCommentorFids = [
+    ...new Set(allPreviewComments.map((c: any) => c.commentorFid)),
+  ];
+  const allCommentUsers = await User.find({
+    farcasterFid: { $in: allCommentorFids },
+  });
+  const allCommentUserMap = new Map(
+    allCommentUsers.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  // Attach commentsPreview to each product
+  const productsWithCommentsPreview = productsWithCreator.map(
+    (product: any) => {
+      const productComments = product.comments || [];
+      const latestComments = productComments
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 3);
+      const commentsPreview = latestComments.map((comment: any) => ({
+        ...comment,
+        commentor: allCommentUserMap.get(comment.commentorFid) || null,
+      }));
+      // Remove creatorFid and comments from product
+      const { creatorFid, comments, ...rest } = product;
+      return {
+        ...rest,
+        commentsPreview,
+      };
+    }
+  );
+
   return ApiResponseBuilder.paginated(
-    publicProducts,
+    productsWithCommentsPreview,
     query.page,
     query.limit,
     total,
