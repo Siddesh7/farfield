@@ -19,20 +19,10 @@ const BodySection = () => {
     // Call all the queries here to maintain consistency throughout the app
     const { data: allProducts, isLoading: loadingProducts, error, refetch: refetchAllProducts } = useGetProducts(page, limit);
 
-    console.log("allProducts", allProducts);
-
-    if (loadingProducts) {
-        return (
-            <div className='min-h-screen flex flex-col gap-2 pt-22 items-center justify-center'>
-                <LoadingSpinner color="secondary" />
-                <p className='p-0 text-fade'>Fetching Products...</p>
-            </div>
-        )
-    }
-
+    // console.log("allProducts", allProducts);
     return (
         <div className="pb-8 mb-8 flex flex-1 flex-col">
-            {activeModule === 'home' && <HomePage products={allProducts} setCategory={setCategory} />}
+            {activeModule === 'home' && <HomePage isLoading={loadingProducts} products={allProducts} setCategory={setCategory} />}
             {activeModule === 'cart' && <CartPage />}
             {activeModule === 'add-product' && <CreateProduct refetchAllProducts={refetchAllProducts} />}
             {activeModule === 'profile' && <ProfilePage />}

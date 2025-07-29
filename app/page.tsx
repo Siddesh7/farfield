@@ -116,8 +116,6 @@ export default function Home() {
       <LoadingLayout />
     );
   }
-  console.log(user);
-  console.log("Wallet sync status:", walletSync);
   if (!isSDKLoaded) {
     return (
       <div className="flex items-center justify-center min-h-screen">

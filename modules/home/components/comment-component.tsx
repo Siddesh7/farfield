@@ -27,6 +27,8 @@ const CommentComponent: FC<CommentComponentProps> = ({
     const { data, isLoading, error, refetch } = useGetProductComments(product.id, 1, 10);
     const { mutate: addComment, isPending } = useAddProductComment(product.id);
 
+    console.log("data", data);
+
     React.useEffect(() => {
         if (data && data.data) {
             setLocalComments(data.data);

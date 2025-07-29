@@ -15,8 +15,8 @@ const CartListItem = ({
         <div className='py-5 border-b flex justify-between'>
             <div className='flex gap-3'>
                 <Image
-                    src='/Product_Image.png'
-                    alt='product Image'
+                    src={`http://localhost:3000/api/images/${product.images[0]}`}
+                    alt={product.name}
                     width={81}
                     height={81}
                     className="max-h-[84px] min-h-[84px] rounded-xl"
@@ -33,7 +33,7 @@ const CartListItem = ({
             <div>
                 <button
                     onClick={() => {
-                        removeFromCart(product._id!);
+                        removeFromCart(product.id);
                         toast.success('Removed from cart!');
                     }}
                     aria-label="Remove from cart"

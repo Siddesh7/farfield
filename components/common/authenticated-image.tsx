@@ -8,9 +8,15 @@ const AuthenticatedImage = ({ fileKey, alt }: { fileKey: string; alt?: string })
     const [imgUrl, setImgUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isClient, setIsClient] = useState(false);
+
+    // Mark as client-side after mount to avoid hydration issues
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
 
     useEffect(() => {
-        if (!fileKey) return;
+        if (!fileKey || !isClient) return;
         let url: string | undefined;
         setLoading(true);
         setError(null);
@@ -34,17 +40,18 @@ const AuthenticatedImage = ({ fileKey, alt }: { fileKey: string; alt?: string })
         return () => {
             if (url) window.URL.revokeObjectURL(url);
         };
-    }, [authenticatedFetch, fileKey]);
+    }, [authenticatedFetch, fileKey, isClient]);
 
-    if (loading) return null;
-    if (error) return <div style={{ color: 'red' }}>Error: {error}</div>;
-    if (!imgUrl) return (
-        <div className='relative w-[-webkit-fill-available] h-[250px]'>
-            <Image src='/Product_Image.png'
-                alt='Product Image'
-                fill style={{ objectFit: 'cover' }} />
-        </div>
-    );
+    // Always render the fallback image on server and during initial client render
+    if (!isClient || loading || error || !imgUrl) {
+        return (
+            <div className='relative w-[-webkit-fill-available] h-[250px]'>
+                <Image src='/Product_Image.png'
+                    alt='Product Image'
+                    fill style={{ objectFit: 'cover' }} />
+            </div>
+        );
+    }
 
     return (
         <div className='relative w-[-webkit-fill-available] h-[275px]'>

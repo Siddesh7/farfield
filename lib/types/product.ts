@@ -29,7 +29,12 @@ export type Product = {
   }[];
 
   // Core product info
-  creatorFid: number;
+  creator: {
+    fid: number;
+    name: string;
+    pfp: string;
+    username: string;
+  };
   slug?: string;
   category: string;
   tags?: string[];

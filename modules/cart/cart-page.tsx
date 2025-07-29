@@ -183,37 +183,39 @@ const CartPage = () => {
                 </ScrollArea>
             </div>
 
-            <div className='fixed left-0 bottom-12 w-full bg-white flex flex-col gap-4 p-5.5 z-10 pb-8'>
-                <div className='flex w-full justify-between items-center'>
-                    <p className='text-lg font-semibold'>Total:</p>
-                    <p className='text-xl font-normal'><span className='font-semibold'>$</span>{cart.reduce((sum, p) => sum + (p.price || 0), 0).toFixed(2)}</p>
+            {cart.length > 0 && (
+                <div className='fixed left-0 bottom-12 w-full bg-white flex flex-col gap-4 p-5.5 z-10 pb-8'>
+                    <div className='flex w-full justify-between items-center'>
+                        <p className='text-lg font-semibold'>Total:</p>
+                        <p className='text-xl font-normal'><span className='font-semibold'>$</span>{cart.reduce((sum, p) => sum + (p.price || 0), 0).toFixed(2)}</p>
+                    </div>
+                    <Button
+                        size='lg'
+                        disabled={loading || (checkoutStep === 'confirmed')}
+                        onClick={
+                            checkoutStep === 'idle'
+                                ? initiateCheckout
+                                : checkoutStep === 'initiated'
+                                    ? confirmPurchase
+                                    : undefined
+                        }
+                    >
+                        {loading ? (
+                            <span className="flex items-center gap-2">
+                                {(buyStep === 'initiating' && 'Initiating...') ||
+                                    (buyStep === 'signing' && (approvalStep === 'checking' ? 'Checking USDC allowance...' : approvalStep === 'approving' ? 'Approving USDC...' : approvalStep === 'done' ? 'Allowance OK. Signing Transaction...' : 'Signing Transaction...')) ||
+                                    (buyStep === 'confirming' && 'Confirming...') ||
+                                    'Processing...'} <LoadingSpinner size="sm" /></span>
+                        ) : (
+                            checkoutStep === 'idle' ? 'Proceed to Checkout' :
+                                checkoutStep === 'initiated' ? 'Confirm Purchase' :
+                                    'Purchase Complete'
+                        )}
+                    </Button>
+                    {buyError && <p className='text-red-500 text-center'>{buyError}</p>}
+                    {approvalError && <p className='text-red-500 text-center'>{approvalError}</p>}
                 </div>
-                <Button
-                    size='lg'
-                    disabled={cart.length === 0 || loading || (checkoutStep === 'confirmed')}
-                    onClick={
-                        checkoutStep === 'idle'
-                            ? initiateCheckout
-                            : checkoutStep === 'initiated'
-                                ? confirmPurchase
-                                : undefined
-                    }
-                >
-                    {loading ? (
-                        <span className="flex items-center gap-2">
-                            {(buyStep === 'initiating' && 'Initiating...') ||
-                                (buyStep === 'signing' && (approvalStep === 'checking' ? 'Checking USDC allowance...' : approvalStep === 'approving' ? 'Approving USDC...' : approvalStep === 'done' ? 'Allowance OK. Signing Transaction...' : 'Signing Transaction...')) ||
-                                (buyStep === 'confirming' && 'Confirming...') ||
-                                'Processing...'} <LoadingSpinner size="sm" /></span>
-                    ) : (
-                        checkoutStep === 'idle' ? 'Proceed to Checkout' :
-                            checkoutStep === 'initiated' ? 'Confirm Purchase' :
-                                'Purchase Complete'
-                    )}
-                </Button>
-                {buyError && <p className='text-red-500 text-center'>{buyError}</p>}
-                {approvalError && <p className='text-red-500 text-center'>{approvalError}</p>}
-            </div>
+            )}
         </BoxContainer>
     );
 };

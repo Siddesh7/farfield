@@ -7,7 +7,6 @@ import React, { useState } from 'react';
 import { toast } from "sonner";
 import { CommentComponent } from './comment-component';
 import { getTruncatedDescription } from '@/lib/utils';
-import { AuthenticatedImage } from '@/components/common';
 
 const ProductComponent = ({
     product
@@ -24,7 +23,12 @@ const ProductComponent = ({
         <>
             {/* Image Container */}
             <div className='relative w-[-webkit-fill-available] h-[275px]'>
-                <AuthenticatedImage fileKey={product.images[0]} alt="Product File" />
+                <Image
+                    src={`http://localhost:3000/api/images/${product.images[0]}`}
+                    alt={product.name}
+                    fill
+                    style={{ objectFit: "cover" }}
+                />
             </div>
 
             {/* Body Component */}
@@ -33,13 +37,13 @@ const ProductComponent = ({
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
                             <Image
-                                src='/profile.jpg'
-                                alt={`User `}
+                                src={product.creator?.pfp}
+                                alt={product.creator?.name}
                                 width={20}
                                 height={20}
                                 className='rounded-xs'
                             />
-                            <p className='p-0 text-sm text-[#000000A3]'>Saxenasaheb</p>
+                            <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
                         </div>
                         <p className='font-inter text-lg font-medium'>{product.name}</p>
                         <div className='flex justify-between items-center'>
@@ -92,10 +96,10 @@ const ProductComponent = ({
                             </p>
                         </div>
                     </div>
-                    <CommentComponent
+                    {/* <CommentComponent
                         product={product}
                         user_comments={product.comments}
-                    />
+                    /> */}
                 </div>
             </div>
 
