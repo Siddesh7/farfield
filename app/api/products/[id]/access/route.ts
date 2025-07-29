@@ -97,6 +97,18 @@ async function productAccessHandler(
     previewFiles = null;
     previewLinks = null;
   }
+  // Fetch creator info
+  const creatorUser = await User.findOne({ farcasterFid: product.creatorFid });
+  let creatorInfo = null;
+  if (creatorUser) {
+    creatorInfo = {
+      fid: creatorUser.farcasterFid,
+      name: creatorUser.farcaster.displayName,
+      username: creatorUser.farcaster.username,
+      pfp: creatorUser.farcaster.pfp || null,
+    };
+  }
+
   const responseData = {
     productId,
     productTitle: product.name,
@@ -114,6 +126,7 @@ async function productAccessHandler(
     previewFiles,
     previewLinks,
     images: product.images || [],
+    creator: creatorInfo,
   };
   return ApiResponseBuilder.success(
     responseData,

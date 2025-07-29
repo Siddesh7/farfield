@@ -37,10 +37,10 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
     const load = async () => {
       try {
         let detectedMiniApp = false;
-        if (sdk && typeof sdk.isInMiniApp === 'function') {
+        if (sdk && typeof sdk.isInMiniApp === "function") {
           try {
             detectedMiniApp = await sdk.isInMiniApp();
-          } catch { }
+          } catch {}
         } else if (typeof window !== "undefined") {
           // Fallback: Heuristic user agent check
           const ua = navigator.userAgent || "";
@@ -56,7 +56,7 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
             if (contextData) {
               detectedMiniApp = true;
             }
-          } catch { }
+          } catch {}
         }
         setIsMiniApp(detectedMiniApp);
 
@@ -122,6 +122,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
             config={{
               loginMethods: ["farcaster"],
+              appearance: {
+                walletList: [
+                  "detected_ethereum_wallets",
+                  "detected_wallets",
+                  "coinbase_wallet",
+                ],
+              },
             }}
           >
             <QueryClientProvider client={queryClient}>
