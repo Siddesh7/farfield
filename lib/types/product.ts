@@ -14,6 +14,16 @@ export type Product = {
     fid: number;
     purchasedAt: Date;
   }[];
+  buyers?: {
+    fid: number;
+    purchasedAt: Date;
+    buyer: {
+      fid: number;
+      name: string;
+      username: string;
+      pfp: string | null;
+    } | null;
+  }[];
 
   // Either digitalFiles OR externalLinks
   hasExternalLinks: boolean; // true = externalLinks, false = digitalFiles

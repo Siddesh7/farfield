@@ -1,5 +1,6 @@
 import { Product } from "@/models/product";
 import { User } from "@/models/user";
+import { Purchase } from "@/models/purchase";
 import connectDB from "@/lib/db/connect";
 import {
   ApiResponseBuilder,
@@ -193,8 +194,61 @@ async function getProductsHandler(request: Request) {
     ])
   );
 
-  // Attach commentsPreview to each product
-  const productsWithCommentsPreview = productsWithCreator.map(
+  // Batch fetch recent buyers for all products
+  const productIds = productsWithCreator.map((p: any) => p._id.toString());
+  const allCompletedPurchases = await Purchase.find({
+    "items.productId": { $in: productIds },
+    status: "completed",
+    blockchainVerified: true,
+  }).sort({ completedAt: -1 });
+
+  // Group purchases by product and get latest 3 buyers per product
+  const buyersByProduct = new Map();
+  allCompletedPurchases.forEach((purchase) => {
+    purchase.items.forEach((item: any) => {
+      if (productIds.includes(item.productId)) {
+        if (!buyersByProduct.has(item.productId)) {
+          buyersByProduct.set(item.productId, []);
+        }
+        const existingBuyers = buyersByProduct.get(item.productId);
+        // Avoid duplicate buyers for the same product
+        if (
+          !existingBuyers.find((b: any) => b.buyerFid === purchase.buyerFid)
+        ) {
+          existingBuyers.push({
+            buyerFid: purchase.buyerFid,
+            completedAt: purchase.completedAt,
+          });
+        }
+      }
+    });
+  });
+
+  // Limit to 3 buyers per product and fetch user info
+  const allBuyerFids = new Set();
+  buyersByProduct.forEach((buyers, productId) => {
+    const latestBuyers = buyers.slice(0, 3);
+    buyersByProduct.set(productId, latestBuyers);
+    latestBuyers.forEach((buyer: any) => allBuyerFids.add(buyer.buyerFid));
+  });
+
+  const allBuyerUsers = await User.find({
+    farcasterFid: { $in: Array.from(allBuyerFids) },
+  });
+  const allBuyerUserMap = new Map(
+    allBuyerUsers.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  // Attach commentsPreview and buyers to each product
+  const productsWithCommentsAndBuyers = productsWithCreator.map(
     (product: any) => {
       const productComments = product.comments || [];
       const latestComments = productComments
@@ -204,20 +258,41 @@ async function getProductsHandler(request: Request) {
         )
         .slice(0, 3);
       const commentsPreview = latestComments.map((comment: any) => ({
-        ...comment,
+        _id: comment._id,
+        commentorFid: comment.commentorFid,
+        comment: comment.comment,
+        createdAt: comment.createdAt,
         commentor: allCommentUserMap.get(comment.commentorFid) || null,
       }));
-      // Remove creatorFid and comments from product
-      const { creatorFid, comments, ...rest } = product;
+
+      // Get buyers for this product
+      const productBuyers = buyersByProduct.get(product._id.toString()) || [];
+      const buyers = productBuyers
+        .map((buyer: any) => {
+          const buyerInfo = allBuyerUserMap.get(buyer.buyerFid);
+          return buyerInfo
+            ? {
+                fid: buyerInfo.fid,
+                username: buyerInfo.username,
+                pfp: buyerInfo.pfp,
+                name: buyerInfo.name,
+              }
+            : null;
+        })
+        .filter(Boolean);
+
+      // Remove creatorFid, comments, and buyer from product
+      const { creatorFid, comments, buyer, ...rest } = product;
       return {
         ...rest,
         commentsPreview,
+        buyers,
       };
     }
   );
 
   return ApiResponseBuilder.paginated(
-    productsWithCommentsPreview,
+    productsWithCommentsAndBuyers,
     query.page,
     query.limit,
     total,

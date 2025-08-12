@@ -81,7 +81,10 @@ async function getProductCommentsHandler(
 
   // Attach user info to each comment
   const commentsWithUser = paginatedComments.map((comment: any) => ({
-    ...comment,
+    _id: comment._id,
+    commentorFid: comment.commentorFid,
+    comment: comment.comment,
+    createdAt: comment.createdAt,
     commentor: userMap.get(comment.commentorFid) || null,
   }));
 
@@ -146,7 +149,13 @@ async function addProductCommentHandler(
   await product.addComment(user.farcasterFid, body.comment);
 
   // Get the newly added comment
-  const newComment = product.comments[product.comments.length - 1];
+  const rawComment = product.comments[product.comments.length - 1];
+  const newComment = {
+    _id: rawComment._id,
+    commentorFid: rawComment.commentorFid,
+    comment: rawComment.comment,
+    createdAt: rawComment.createdAt,
+  };
 
   return ApiResponseBuilder.success(
     newComment,
