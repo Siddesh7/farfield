@@ -19,6 +19,7 @@ const ProductComponent = ({
 
     const isInCart = cart.some((p) => p.id === product.id);
 
+    console.log("product", product);
     return (
         <>
             {/* Image Container */}
@@ -35,15 +36,29 @@ const ProductComponent = ({
             <div className='flex flex-col gap-11 pt-5.5 px-5.5'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
-                        <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
-                            <Image
-                                src={product.creator?.pfp}
-                                alt={product.creator?.name}
-                                width={20}
-                                height={20}
-                                className='rounded-xs'
-                            />
-                            <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
+                        <div className='flex justify-between items-center'>
+                            <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
+                                <div className='relative w-5 h-5'>
+                                    <img
+                                        src={product.creator?.pfp}
+                                        alt={product.creator?.name}
+                                        className='rounded-xs object-cover w-full h-full'
+                                    />
+                                </div>
+                                <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
+                            </div>
+                            <div className='flex gap-2 items-center bg-blue'>
+                                <div className="flex items-center justify-center">
+                                    <Image
+                                        src="/USDC.jpg"
+                                        alt='USDC'
+                                        width={24}
+                                        height={24}
+                                        className="rounded-md"
+                                    />
+                                </div>
+                                <p className='font-semibold text-xl'>${product.price}</p>
+                            </div>
                         </div>
                         <p className='font-inter text-lg font-medium'>{product.name}</p>
                         <div className='flex justify-between items-center'>
@@ -64,18 +79,7 @@ const ProductComponent = ({
                                 </div>
                             </div>
 
-                            <div className='flex gap-2 items-center bg-blue'>
-                                <div className="flex items-center justify-center">
-                                    <Image
-                                        src="/USDC.jpg"
-                                        alt='USDC'
-                                        width={24}
-                                        height={24}
-                                        className="rounded-md"
-                                    />
-                                </div>
-                                <p className='font-semibold text-xl'>${product.price}</p>
-                            </div>
+
                         </div>
                         {/* Description with View More/Less */}
                         <div>

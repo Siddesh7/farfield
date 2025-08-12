@@ -24,9 +24,9 @@ const BottomNavigation = () => {
 
   useEffect(() => {
     (async () => {
-      const { client } = await sdk.context;
-      if (client.safeAreaInsets) {
-        setInsets(client.safeAreaInsets);
+      const contextData = await sdk.context;
+      if (contextData && contextData.client && contextData.client.safeAreaInsets) {
+        setInsets(contextData.client.safeAreaInsets);
       }
     })();
   }, []);
