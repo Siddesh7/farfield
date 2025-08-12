@@ -4,9 +4,8 @@ import { CreateProduct } from '@/modules/createProduct';
 import { HomePage } from '@/modules/home';
 import { useGetProducts } from '@/query';
 import React, { useState } from 'react';
-import { LoadingSpinner } from '../ui';
 import { ProfilePage } from '@/modules/profile';
-import { HistoryPage } from '@/modules/history';
+import NotificationPage from '@/modules/notifications/notification-page';
 
 const BodySection = () => {
 
@@ -26,7 +25,7 @@ const BodySection = () => {
             {activeModule === 'cart' && <CartPage />}
             {activeModule === 'add-product' && <CreateProduct refetchAllProducts={refetchAllProducts} />}
             {activeModule === 'profile' && <ProfilePage />}
-            {activeModule === 'history' && <HistoryPage />}
+            {activeModule === 'notifications' && <NotificationPage />}
         </div>
     );
 };
