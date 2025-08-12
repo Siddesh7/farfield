@@ -9,6 +9,7 @@ import {
   HTTP_STATUS,
 } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { NotificationService } from "@/lib//notification-service";
 
 interface ConfirmPurchaseRequest {
   purchaseId: string;
@@ -128,6 +129,15 @@ async function confirmPurchaseHandler(
   }
   // Mark purchase as completed
   await purchase.markCompleted(body.transactionHash);
+
+  // CREATE NOTIFICATIONS HERE
+  await NotificationService.createPurchaseNotifications({
+    purchaseId: purchase.purchaseId,
+    buyerFid: purchase.buyerFid,
+    items: purchase.items,
+    totalAmount: purchase.totalAmount,
+  });
+
   // Prepare response
   const responseData = {
     purchaseId: body.purchaseId,

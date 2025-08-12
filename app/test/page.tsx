@@ -642,6 +642,45 @@ export default function TestPage() {
 
       // Test public endpoints
       await testPublicEndpoints();
+
+      // Add these test functions after line 315 (after user API tests)
+
+      // ========== NOTIFICATION API TESTS (NEW) ==========
+
+      const testGetNotifications = useCallback(
+        () =>
+          runTest(
+            "GET /api/notifications",
+            () => get("/api/notifications?limit=50"),
+            "Get user notifications (Protected)"
+          ),
+        [get]
+      );
+
+      const testMarkNotificationAsRead = useCallback(() => {
+        // For testing purposes, we'll use a placeholder ID
+        // In real usage, you'd get this from the notifications list
+        const notificationId = "675a1234567890abcdef1234"; // Placeholder ID
+        return runTest(
+          "PUT /api/notifications/[id]/read",
+          () => put(`/api/notifications/${notificationId}/read`, {}),
+          "Mark specific notification as read (Protected) - Uses placeholder ID"
+        );
+      }, [put]);
+
+      const testMarkAllNotificationsAsRead = useCallback(
+        () =>
+          runTest(
+            "PUT /api/notifications/mark-all-read",
+            () => put("/api/notifications/mark-all-read", {}),
+            "Mark all notifications as read (Protected)"
+          ),
+        [put]
+      );
+
+      // Add to runAllTests function around line 680 (after user tests):
+      await testGetNotifications();
+      await testMarkAllNotificationsAsRead();
     } finally {
       setIsRunning(false);
     }
@@ -1640,6 +1679,39 @@ export default function TestPage() {
     }));
   };
 
+  // ========== NOTIFICATION API TESTS (NEW) ==========
+
+  const testGetNotifications = useCallback(
+    () =>
+      runTest(
+        "GET /api/notifications",
+        () => get("/api/notifications?limit=50"),
+        "Get user notifications (Protected)"
+      ),
+    [get]
+  );
+
+  const testMarkNotificationAsRead = useCallback(() => {
+    // For testing purposes, we'll use a placeholder ID
+    // In real usage, you'd get this from the notifications list
+    const notificationId = "675a1234567890abcdef1234"; // Placeholder ID
+    return runTest(
+      "PUT /api/notifications/[id]/read",
+      () => put(`/api/notifications/${notificationId}/read`, {}),
+      "Mark specific notification as read (Protected) - Uses placeholder ID"
+    );
+  }, [put]);
+
+  const testMarkAllNotificationsAsRead = useCallback(
+    () =>
+      runTest(
+        "PUT /api/notifications/mark-all-read",
+        () => put("/api/notifications/mark-all-read", {}),
+        "Mark all notifications as read (Protected)"
+      ),
+    [put]
+  );
+
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1769,6 +1841,29 @@ export default function TestPage() {
               <Button onClick={testRegisterUser} disabled={isRunning} size="sm">
                 POST /users/register
               </Button>
+            </div>
+          </div>
+
+          {/* Notification API Individual Tests */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">🔔 Notification API Tests</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Button onClick={testGetNotifications} disabled={isRunning} size="sm">
+                GET /notifications
+              </Button>
+              <Button
+                onClick={testMarkAllNotificationsAsRead}
+                disabled={isRunning}
+                size="sm"
+              >
+                PUT /notifications/mark-all-read
+              </Button>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>
+                <strong>💡 Note:</strong> The "Mark single notification as read" test uses a placeholder ID. 
+                Run "GET /notifications" first to see actual notification IDs, then manually test with real IDs.
+              </p>
             </div>
           </div>
 

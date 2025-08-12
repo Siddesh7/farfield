@@ -15,7 +15,7 @@ export interface IPurchase extends Document {
   status: "pending" | "completed" | "failed" | "expired";
   transactionHash?: string;
   blockchainVerified: boolean;
-  expiresAt: Date;
+  expiresAt?: Date; // Made optional since completed purchases won't have this
   createdAt: Date;
   completedAt?: Date;
 }
@@ -75,7 +75,7 @@ const PurchaseSchema = new Schema<IPurchase>(
     },
     expiresAt: {
       type: Date,
-      required: true,
+      required: false, // Changed from true to false
     },
     completedAt: {
       type: Date,
@@ -86,15 +86,23 @@ const PurchaseSchema = new Schema<IPurchase>(
   }
 );
 
-// Index for cleanup of expired purchases
-PurchaseSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// Conditional TTL index - only applies to non-completed purchases
+PurchaseSchema.index(
+  { expiresAt: 1 }, 
+  { 
+    expireAfterSeconds: 0,
+    partialFilterExpression: { 
+      status: { $in: ["pending", "failed", "expired"] }
+    }
+  }
+);
 
 // Index for user purchase history
 PurchaseSchema.index({ buyerFid: 1, createdAt: -1 });
 
 // Methods
 PurchaseSchema.methods.isExpired = function () {
-  return Date.now() > this.expiresAt.getTime();
+  return this.expiresAt && Date.now() > this.expiresAt.getTime();
 };
 
 PurchaseSchema.methods.markCompleted = function (transactionHash: string) {
@@ -102,11 +110,14 @@ PurchaseSchema.methods.markCompleted = function (transactionHash: string) {
   this.transactionHash = transactionHash;
   this.blockchainVerified = true;
   this.completedAt = new Date();
+  // Remove expiresAt so TTL doesn't apply to completed purchases
+  this.expiresAt = undefined;
   return this.save();
 };
 
 PurchaseSchema.methods.markFailed = function (reason?: string) {
   this.status = "failed";
+  // Keep expiresAt so failed purchases can still be cleaned up
   return this.save();
 };
 
