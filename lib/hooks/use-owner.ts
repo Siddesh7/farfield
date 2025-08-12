@@ -14,16 +14,10 @@ interface UseOwnerReturn {
   productCreatorFid?: number;
 }
 
-/**
- * Hook to check if the current authenticated user is the owner of a product
- * @param product - The product to check ownership for
- * @returns Object containing ownership status and related information
- */
 export function useOwner(product: Product | null): UseOwnerReturn {
   const { ready, authenticated, user } = usePrivy();
 
   const result = useMemo((): UseOwnerReturn => {
-    // If not ready or not authenticated, return default values
     if (!ready || !authenticated || !user) {
       return {
         isOwner: false,

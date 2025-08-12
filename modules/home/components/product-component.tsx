@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { CommentComponent } from './comment-component';
 import { getTruncatedDescription } from '@/lib/utils';
 import { StarIcon } from '@/components/icons';
-import { useOwner } from '@/lib/hooks';
+import { useAuthenticatedAPI, useIsBuyer, useOwner } from '@/lib/hooks';
 
 const ProductComponent = ({
     product
@@ -18,15 +18,39 @@ const ProductComponent = ({
 
     const { addToCart, cart } = useGlobalContext();
     const [showFullDescription, setShowFullDescription] = useState(false);
+    const [hoverRating, setHoverRating] = useState<number | null>(null);
+    const [displayAverage, setDisplayAverage] = useState<number>(product.ratingsScore || 0);
+    const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
 
     const isInCart = cart.some((p) => p.id === product.id);
     
-    const {isOwner,isLoading} = useOwner(product)
+    const {isOwner,isLoading:checkingOwner} = useOwner(product)
+    const { isBuyer, isLoading:checkingBuyer } = useIsBuyer(product);
+    const { post } = useAuthenticatedAPI();
 
-    const description = "Porem ipsum dolor sit amet, consectetur adipiscing elit. Nunc vulputate libero et velit interdum, ac aliquet odio mattis Porem ipsum dolor sit amet, consectetur adipisit. Nunc vulputate."
+    const canRate = isBuyer && !checkingBuyer;
+
+    const handleRate = async (rating: number) => {
+        if (!canRate || isSubmittingRating) return;
+        setIsSubmittingRating(true);
+        try {
+            const res = await post(`/api/products/${product.id}/ratings`, { rating });
+            if (res?.success) {
+                const avg = res?.data?.averageRating ?? res?.data?.ratingsScore ?? product.ratingsScore;
+                setDisplayAverage(avg);
+                toast.success('Rating added successfully');
+            } else {
+                toast.error(res?.error || res?.message || 'Failed to submit rating');
+            }
+        } catch (error: any) {
+            toast.error(error?.message || 'Failed to submit rating');
+        } finally {
+            setIsSubmittingRating(false);
+        }
+    }
+
     return (
         <>
-            {/* Image Container */}
             <div className='relative w-[-webkit-fill-available] h-[275px]'>
                 <Image
                     src={`http://localhost:3000/api/images/${product.images[0]}`}
@@ -36,10 +60,9 @@ const ProductComponent = ({
                 />
             </div>
 
-            {/* Body Component */}
             <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-24'>
                 <div className='flex flex-col gap-5.5'>
-                    <div className='flex flex-col gap-4.25'>
+                    <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>
                             <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
                                 <div className='relative w-5 h-5'>
@@ -70,17 +93,25 @@ const ProductComponent = ({
                                 <CircleUser size={20} /> {product.category}
                             </div>
                         </div>
-                        <div className='flex justify-between items-center'>
-                            {product.ratingsScore && product.ratingsScore > 0 ? (
-                                <div className='flex gap-1 items-center'>
-                                    {[...Array(Math.floor(product.ratingsScore))].map((_, index) => (
-                                        <StarIcon key={index} width={16} />
-                                    ))}
-                                    <p className='text-sm font-normal text-fade ml-1'>{product.ratingsScore}</p>
-                                </div>
-                            ) : (
-                                <div></div>
-                            )}
+                        <div className='flex justify-between items-center py-2'>
+                            <div className='flex gap-1 items-center'>
+                                {[1,2,3,4,5].map((star) => {
+                                    const isActive = hoverRating != null
+                                        ? star <= (hoverRating as number)
+                                        : star <= Math.floor(displayAverage || 0);
+                                    return (
+                                        <StarIcon
+                                            key={star}
+                                            width={20}
+                                            isActive={isActive}
+                                            onMouseEnter={canRate ? () => setHoverRating(star) : undefined}
+                                            onMouseLeave={canRate ? () => setHoverRating(null) : undefined}
+                                            onClick={canRate ? () => handleRate(star) : undefined}
+                                            className={canRate ? 'cursor-pointer' : 'cursor-default'}
+                                        />
+                                    );
+                                })}
+                            </div>
 
                             {product.buyers && product.buyers.length > 0 && (
                                 <div className='flex items-center'>
@@ -101,7 +132,7 @@ const ProductComponent = ({
                                 </div>
                             )}
                         </div>
-                        {/* Description with View More/Less */}
+                        
                         <div>
                             <p className='font-inter text-sm font-normal text-fade'>
                                 {showFullDescription

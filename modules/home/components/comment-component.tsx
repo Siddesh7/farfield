@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Product } from '@/lib/types/product';
-import { Ellipsis, SendHorizontal } from 'lucide-react';
+import { SendHorizontal } from 'lucide-react';
 import Image from 'next/image';
 import React, { FC, useState } from 'react';
 import { useGetProductComments, useAddProductComment } from '@/query/use-comment';
@@ -9,12 +9,7 @@ import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatTimeAgo } from '@/lib/utils';
 import { DoubleTickIcon } from '@/components/icons';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useIsBuyer } from '@/lib/hooks';
 
 type CommentComponentProps = {
     product: Product;
@@ -25,6 +20,8 @@ const CommentComponent: FC<CommentComponentProps> = ({
     product,
     user_comments
 }) => {
+    const { isBuyer, isLoading:checkingBuyer } = useIsBuyer(product);
+
     const [comment, setComment] = useState('');
     const [localComments, setLocalComments] = useState(user_comments || []);
 
@@ -99,26 +96,11 @@ const CommentComponent: FC<CommentComponentProps> = ({
                                 <div className='flex gap-1 items-center'>
                                     <Image src='/profile.jpg' alt='Profile' width={28} height={28} className='rounded-md' />
                                     <p className='p-0 text-[#000000A3]'>Saxenasaheb</p>
-                                    <BuyerTag />
+                                   {isBuyer && <BuyerTag />}
                                     <span className='text-xs text-gray-400 ml-2'>{formatTimeAgo(comment.createdAt)}</span>
                                 </div>
                                 <p className='p-o text-[#0000007A]'>{comment.comment}</p>
                             </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="hover:bg-gray-100">
-                                        <Ellipsis color='#0000007A' />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-26 -mt-2 -mr-2">
-                                    <DropdownMenuItem 
-                                        onClick={() => toast.info('Report functionality coming soon')}
-                                        className="text-red-600 text-sm"
-                                    >
-                                        Report
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
                         </div>
                     ))}
                 </div>
