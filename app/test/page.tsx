@@ -254,7 +254,7 @@ export default function TestPage() {
         put("/api/users/me/farcaster", {
           displayName: "Test Farcaster Update",
           bio: "Updated Farcaster bio",
-          pfp: "https://example.com/test-pfp.jpg",
+          pfp: "",
         }),
       "Update Farcaster profile"
     );
@@ -301,7 +301,7 @@ export default function TestPage() {
             displayName: user?.farcaster?.displayName || "Test User",
             username: user?.farcaster?.username || "testuser",
             bio: user?.farcaster?.bio || "Test bio",
-            pfp: user?.farcaster?.pfp || "https://example.com/pfp.jpg",
+            pfp: user?.farcaster?.pfp || "",
           },
           wallet: {
             address:
