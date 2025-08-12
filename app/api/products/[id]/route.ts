@@ -10,6 +10,7 @@ import {
 } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
 import mongoose from "mongoose";
+import { fetchUsersFromNeynar, updateUsersSubscriptionStatus } from "@/lib/utils/neynar";
 
 // GET /api/products/[id] - Get single product details (Public)
 async function getProductByIdHandler(
@@ -47,23 +48,13 @@ async function getProductByIdHandler(
   const productObj = product.toObject();
   delete productObj.buyer;
 
-  // Fetch creator info
-  const creatorUser = await User.findOne({
-    farcasterFid: productObj.creatorFid,
-  });
-  let creatorInfo = null;
-  if (creatorUser) {
-    creatorInfo = {
-      fid: creatorUser.farcasterFid,
-      name: creatorUser.farcaster.displayName,
-      username: creatorUser.farcaster.username,
-      pfp: creatorUser.farcaster.pfp || null,
-    };
-  }
-  productObj.creator = creatorInfo;
-  delete productObj.creatorFid;
-
-  // Add commentsPreview: 3 latest comments with commentator info
+  // Collect all FIDs for subscription status checking
+  const allFids = new Set<number>();
+  
+  // Add creator FID
+  allFids.add(productObj.creatorFid);
+  
+  // Add commenter FIDs
   const comments = productObj.comments || [];
   const latestComments = comments
     .sort(
@@ -71,35 +62,12 @@ async function getProductByIdHandler(
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
     .slice(0, 3);
-  const commentorFids = [
-    ...new Set(latestComments.map((c: any) => c.commentorFid)),
-  ];
-  const commentUsers = await User.find({
-    farcasterFid: { $in: commentorFids },
+  
+  latestComments.forEach((comment: any) => {
+    allFids.add(comment.commentorFid);
   });
-  const commentUserMap = new Map(
-    commentUsers.map((u) => [
-      u.farcasterFid,
-      {
-        fid: u.farcasterFid,
-        name: u.farcaster.displayName,
-        username: u.farcaster.username,
-        pfp: u.farcaster.pfp || null,
-      },
-    ])
-  );
-  productObj.commentsPreview = latestComments.map((comment: any) => ({
-    _id: comment._id,
-    commentorFid: comment.commentorFid,
-    comment: comment.comment,
-    createdAt: comment.createdAt,
-    commentor: commentUserMap.get(comment.commentorFid) || null,
-  }));
 
-  // Remove comments array from product response
-  delete productObj.comments;
-
-  // Add buyers: 3 latest buyers with their info from Purchase model (actual completed purchases)
+  // Add buyer FIDs
   const completedPurchases = await Purchase.find({
     "items.productId": id,
     status: "completed",
@@ -108,31 +76,91 @@ async function getProductByIdHandler(
     .sort({ completedAt: -1 })
     .limit(3);
 
-  const buyerFids = [...new Set(completedPurchases.map((p) => p.buyerFid))];
-  const buyerUsers = await User.find({
-    farcasterFid: { $in: buyerFids },
+  completedPurchases.forEach((purchase) => {
+    allFids.add(purchase.buyerFid);
   });
-  const buyerUserMap = new Map(
-    buyerUsers.map((u) => [
+
+  // Fetch all users from database
+  const allUsers = await User.find({
+    farcasterFid: { $in: Array.from(allFids) },
+  });
+
+  // Find FIDs that don't have subscription status in DB (isSubscribed is null/undefined)
+  const usersWithoutSubscriptionStatus = allUsers.filter(
+    (user) => user.isSubscribed === null || user.isSubscribed === undefined
+  );
+  
+  const fidsToFetchFromNeynar = usersWithoutSubscriptionStatus.map(
+    (user) => user.farcasterFid
+  );
+
+  // Fetch subscription status from Neynar for missing users
+  if (fidsToFetchFromNeynar.length > 0) {
+    try {
+      const neynarUsers = await fetchUsersFromNeynar(fidsToFetchFromNeynar);
+      await updateUsersSubscriptionStatus(neynarUsers);
+      
+      // Refresh user data after update
+      const updatedUsers = await User.find({
+        farcasterFid: { $in: Array.from(allFids) },
+      });
+      
+      // Replace allUsers with updated data
+      allUsers.splice(0, allUsers.length, ...updatedUsers);
+    } catch (error) {
+      console.error("Error fetching subscription status from Neynar:", error);
+      // Continue without subscription status if Neynar fails
+    }
+  }
+
+  // Create user maps with subscription status
+  const userMap = new Map(
+    allUsers.map((u) => [
       u.farcasterFid,
       {
         fid: u.farcasterFid,
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
+        isSubscribed: u.isSubscribed || false,
       },
     ])
   );
 
+  // Fetch creator info
+  const creatorInfo = userMap.get(productObj.creatorFid) || null;
+  productObj.creator = creatorInfo;
+  delete productObj.creatorFid;
+
+  // Add commentsPreview with subscription status
+  const commentorFids = [
+    ...new Set(latestComments.map((c: any) => c.commentorFid)),
+  ];
+  
+  productObj.commentsPreview = latestComments.map((comment: any) => ({
+    _id: comment._id,
+    commentorFid: comment.commentorFid,
+    comment: comment.comment,
+    createdAt: comment.createdAt,
+    commentor: userMap.get(comment.commentorFid) || null,
+  }));
+
+  // Remove comments array from product response
+  delete productObj.comments;
+
+  // Add buyers with subscription status
+  const buyerFids = [...new Set(completedPurchases.map((p) => p.buyerFid))];
+  
   productObj.buyers = completedPurchases
     .map((purchase) => {
-      const buyerInfo = buyerUserMap.get(purchase.buyerFid);
+      const buyerInfo = userMap.get(purchase.buyerFid);
       return buyerInfo
         ? {
             fid: buyerInfo.fid,
             username: buyerInfo.username,
             pfp: buyerInfo.pfp,
             name: buyerInfo.name,
+            isSubscribed: buyerInfo.isSubscribed,
           }
         : null;
     })

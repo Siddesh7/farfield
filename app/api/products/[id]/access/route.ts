@@ -4,6 +4,7 @@ import { Product } from "@/models/product";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, HTTP_STATUS } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { fetchUsersFromNeynar, updateUsersSubscriptionStatus } from "@/lib/utils/neynar";
 
 interface RouteParams {
   params: {
@@ -97,16 +98,48 @@ async function productAccessHandler(
     previewFiles = null;
     previewLinks = null;
   }
-  // Fetch creator info
+  // Fetch creator info with subscription status
   const creatorUser = await User.findOne({ farcasterFid: product.creatorFid });
   let creatorInfo = null;
+  
   if (creatorUser) {
-    creatorInfo = {
-      fid: creatorUser.farcasterFid,
-      name: creatorUser.farcaster.displayName,
-      username: creatorUser.farcaster.username,
-      pfp: creatorUser.farcaster.pfp || null,
-    };
+    // Check if we need to fetch subscription status from Neynar
+    if (creatorUser.isSubscribed === null || creatorUser.isSubscribed === undefined) {
+      try {
+        const neynarUsers = await fetchUsersFromNeynar([creatorUser.farcasterFid]);
+        await updateUsersSubscriptionStatus(neynarUsers);
+        
+        // Refresh creator data
+        const updatedCreatorUser = await User.findOne({ farcasterFid: product.creatorFid });
+        if (updatedCreatorUser) {
+          creatorInfo = {
+            fid: updatedCreatorUser.farcasterFid,
+            name: updatedCreatorUser.farcaster.displayName,
+            username: updatedCreatorUser.farcaster.username,
+            pfp: updatedCreatorUser.farcaster.pfp || null,
+            isSubscribed: updatedCreatorUser.isSubscribed || false,
+          };
+        }
+      } catch (error) {
+        console.error("Error fetching creator subscription status from Neynar:", error);
+        // Fallback to existing data without subscription status
+        creatorInfo = {
+          fid: creatorUser.farcasterFid,
+          name: creatorUser.farcaster.displayName,
+          username: creatorUser.farcaster.username,
+          pfp: creatorUser.farcaster.pfp || null,
+          isSubscribed: false, // Default to false if we can't fetch
+        };
+      }
+    } else {
+      creatorInfo = {
+        fid: creatorUser.farcasterFid,
+        name: creatorUser.farcaster.displayName,
+        username: creatorUser.farcaster.username,
+        pfp: creatorUser.farcaster.pfp || null,
+        isSubscribed: creatorUser.isSubscribed || false,
+      };
+    }
   }
 
   const responseData = {
