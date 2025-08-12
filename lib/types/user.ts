@@ -18,6 +18,7 @@ export interface UserResponse {
     connectorType?: string;
     isPrimary?: boolean;
   }>;
+  isSubscribed?: boolean; // Farcaster pro subscription status
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +28,7 @@ export interface PublicUserResponse extends Omit<UserResponse, "wallets"> {
     address: string;
     chainType?: string;
   }>;
+  isSubscribed?: boolean; // Farcaster pro subscription status
 }
 
 // User Registration Request

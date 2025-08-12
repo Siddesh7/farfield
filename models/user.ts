@@ -18,6 +18,7 @@ export interface IUser extends Document {
     connectorType?: string;
     isPrimary?: boolean;
   }>;
+  isSubscribed?: boolean; // Farcaster pro subscription status
   toPublicJSON(): UserResponse;
 }
 
@@ -51,6 +52,10 @@ const UserSchema = new Schema<IUser>(
         isPrimary: { type: Boolean, default: false },
       },
     ],
+    isSubscribed: {
+      type: Boolean,
+      default: null, // null means we haven't checked yet
+    },
   },
   {
     timestamps: true,
