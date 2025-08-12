@@ -4,7 +4,18 @@ import type { PaginatedResponse, ApiResponse } from "@/lib/types/api";
 import type { Product } from "@/lib/types/product";
 
 // Type for a single comment
-export type ProductComment = Product["comments"][number];
+export type ProductComment = {
+  _id: string;
+  commentorFid: number;
+  comment: string;
+  createdAt: string;
+  commentor: {
+    fid: number;
+    name: string;
+    username: string;
+    pfp: string;
+  } | null;
+};
 
 // GET: Fetch comments for a product (public)
 export function useGetProductComments(productId: string, page: number = 1, limit: number = 10) {

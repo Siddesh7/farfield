@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { SearchFilter } from "./search-filter";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { ProductCard } from "@/components/common";
@@ -19,9 +19,17 @@ const HomeComponent: FC<HomeComponentProps> = ({
   setCategory,
   ProductTypes,
 }) => {
-  const [selectedType, setSelectedType] = useState("All");
+  const [selectedType, setSelectedType] = useState<string>("All");
 
   const featuredProduct = isLoading ? null : products[0];
+
+  useEffect(() => {
+    setCategory(selectedType);
+  }, [selectedType, setCategory]);
+
+  const handleCategorySelect = (category: string) => {
+    setSelectedType(category);
+  };
 
   return (
     <div className='pt-22 px-5.5'>
@@ -32,7 +40,7 @@ const HomeComponent: FC<HomeComponentProps> = ({
           {ProductTypes.map((type) => (
             <div
               key={type}
-              onClick={() => setSelectedType(type)}
+              onClick={() => handleCategorySelect(type)}
               className={`px-4 py-2.5 font-inter rounded-lg cursor-pointer transition-all 
                   ${selectedType === type ? 'bg-[#000] text-white' : 'bg-[#0000000A] text-fade'}`}
             >

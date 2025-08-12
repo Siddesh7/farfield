@@ -13,8 +13,8 @@ import { Input } from '@/components/ui/input';
 import { ProductFormVariables } from '../create-product';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
+import { PRODUCT_TYPES } from '@/constants';
 
-const PRODUCT_TYPES = ["Books", "Art", "Entertainment", "Technology"];
 const USDC_LOGO = "/USDC.jpg";
 
 interface AddProductFormProps {

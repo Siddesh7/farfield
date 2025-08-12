@@ -49,6 +49,9 @@ const ProductComponent = ({
         }
     }
 
+    console.log("Product >>",product);
+    
+
     return (
         <>
             <div className='relative w-[-webkit-fill-available] h-[275px]'>
@@ -60,7 +63,7 @@ const ProductComponent = ({
                 />
             </div>
 
-            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-24'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-18'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>
@@ -117,10 +120,10 @@ const ProductComponent = ({
                                 <div className='flex items-center'>
                                     <p className='text-sm font-normal text-fade'>Bought by:</p>
                                     <div className='flex -space-x-4 ml-2'>
-                                        {product.buyers.map((_, idx) => (
+                                        {product.buyers.map((buyer, idx) => (
                                             <Image
                                                 key={idx}
-                                                src='/profile.jpg'
+                                                src={buyer?.pfp || "/profile.jpg"}
                                                 alt={`User ${idx + 1}`}
                                                 width={22}
                                                 height={22}
@@ -153,7 +156,6 @@ const ProductComponent = ({
                     </div>
                     <CommentComponent
                         product={product}
-                        user_comments={product.comments}
                     />
                 </div>
             </div>
