@@ -1,4 +1,4 @@
-import React, { FC, useState } from "react";
+import React, { FC, useState, useEffect } from "react";
 import { SearchFilter } from "./search-filter";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { ProductCard } from "@/components/common";
@@ -20,6 +20,11 @@ const HomeComponent: FC<HomeComponentProps> = ({
   ProductTypes,
 }) => {
   const [selectedType, setSelectedType] = useState("All");
+
+  // Update the parent component's category when selectedType changes
+  useEffect(() => {
+    setCategory(selectedType);
+  }, [selectedType, setCategory]);
 
   const featuredProduct = isLoading ? null : products[0];
 

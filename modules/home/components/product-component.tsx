@@ -18,17 +18,15 @@ const ProductComponent = ({
 }) => {
 
     const { data, isLoading, error } = useProductAccess(product.id);
-    console.log("isLoading data access",data,isLoading);
 
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [hoverRating, setHoverRating] = useState<number | null>(null);
     const [displayAverage, setDisplayAverage] = useState<number>(product.ratingsScore || 0);
     const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
 
-    const { isBuyer, isLoading:checkingBuyer } = useIsBuyer(product);
     const { post } = useAuthenticatedAPI();
 
-    const canRate = isBuyer && !checkingBuyer;
+    const canRate = data?.hasPurchased;
 
     const handleRate = async (rating: number) => {
         if (!canRate || isSubmittingRating) return;
@@ -49,8 +47,7 @@ const ProductComponent = ({
         }
     }
 
-    console.log("Product >>",product);
-    
+
 
     return (
         <>
@@ -63,7 +60,7 @@ const ProductComponent = ({
                 />
             </div>
 
-            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-18'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-24'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>
@@ -97,45 +94,25 @@ const ProductComponent = ({
                             </div>
                         </div>
                         <div className='flex justify-between items-center py-2'>
-                            <div className='flex gap-1 items-center'>
-                                {[1,2,3,4,5].map((star) => {
-                                    const isActive = hoverRating != null
-                                        ? star <= (hoverRating as number)
-                                        : star <= Math.floor(displayAverage || 0);
-                                    return (
-                                        <StarIcon
-                                            key={star}
-                                            width={20}
-                                            isActive={isActive}
-                                            onMouseEnter={canRate ? () => setHoverRating(star) : undefined}
-                                            onMouseLeave={canRate ? () => setHoverRating(null) : undefined}
-                                            onClick={canRate ? () => handleRate(star) : undefined}
-                                            className={canRate ? 'cursor-pointer' : 'cursor-default'}
-                                        />
-                                    );
-                                })}
-                            </div>
-
                             {product.buyers && product.buyers.length > 0 && (
                                 <div className='flex items-center'>
                                     <p className='text-sm font-normal text-fade'>Bought by:</p>
-                                    <div className='flex -space-x-4 ml-2'>
+                                    <div className='flex -space-x-2 ml-2'>
                                         {product.buyers.map((buyer, idx) => (
-                                            <Image
-                                                key={idx}
-                                                src={buyer?.pfp || "/profile.jpg"}
-                                                alt={`User ${idx + 1}`}
-                                                width={22}
-                                                height={22}
-                                                className='rounded-xs'
-                                                style={{ zIndex: idx }}
-                                            />
+                                            <div className='relative w-7 h-7 ' key={idx}>
+                                                <img
+                                                    src={buyer?.pfp || "/profile.jpg"}
+                                                    alt={`User ${idx + 1}`}
+                                                    className='rounded-md p-1 bg-white object-cover w-full h-full'
+                                                    style={{ zIndex: idx }}
+                                                />
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
                         </div>
-                        
+
                         <div>
                             <p className='font-inter text-sm font-normal text-fade'>
                                 {showFullDescription
@@ -156,12 +133,11 @@ const ProductComponent = ({
                     </div>
                     <CommentComponent
                         product={product}
-                        user_comments={product.comments}
                     />
                 </div>
             </div>
 
-            <ProductAccessComponent product={product}/>
+            <ProductAccessComponent product={product} />
 
         </>
     );

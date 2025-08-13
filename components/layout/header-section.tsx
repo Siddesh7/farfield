@@ -17,7 +17,9 @@ const HeaderSection = () => {
     if (activeModule === 'profile') return null
 
     return (
-        <div className='absolute top-0 z-99 w-full flex justify-between pt-7 px-5 items-center'>
+        
+                    <div className='absolute top-0 z-99 w-full flex justify-between pt-7 px-5 items-center'>
+
 
             {showBackArrow ? <div className='bg-white rounded-xl px-3.5 py-2.5'>
                 <ArrowLeft onClick={() => {
@@ -26,7 +28,7 @@ const HeaderSection = () => {
                 }} />
             </div> : (
                 <h1 className="font-awesome-italic text-2xl font-medium">
-                    {(activeModule === 'home' || activeModule === 'cart' || activeModule === 'history') && (
+                    {(activeModule === 'home' || activeModule === 'cart' || activeModule === 'notifications') && (
                         <Image
                             src="/App_Logo.png"
                             alt='App Logo'

@@ -2,40 +2,24 @@ import { Button } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Product } from '@/lib/types/product';
 import { SendHorizontal } from 'lucide-react';
-import Image from 'next/image';
 import React, { FC, useState } from 'react';
 import { useGetProductComments, useAddProductComment } from '@/query/use-comment';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatTimeAgo } from '@/lib/utils';
 import { DoubleTickIcon } from '@/components/icons';
-import { useIsBuyer } from '@/lib/hooks';
 
 type CommentComponentProps = {
     product: Product;
-    user_comments: Product['comments']
 }
 
 const CommentComponent: FC<CommentComponentProps> = ({
     product,
-    user_comments
 }) => {
-    const { isBuyer, isLoading:checkingBuyer } = useIsBuyer(product);
-
     const [comment, setComment] = useState('');
-    const [localComments, setLocalComments] = useState(user_comments || []);
 
-    if (!product.id) {
-        return <div className="text-center text-red-500">Invalid product ID</div>;
-    }
     const { data, isLoading, error, refetch } = useGetProductComments(product.id, 1, 10);
     const { mutate: addComment, isPending } = useAddProductComment(product.id);
-
-    React.useEffect(() => {
-        if (data && data.data) {
-            setLocalComments(data.data);
-        }
-    }, [data]);
 
     const handleAddComment = () => {
         if (!comment.trim()) {
@@ -47,7 +31,7 @@ const CommentComponent: FC<CommentComponentProps> = ({
                 setComment('');
                 toast.success('Comment added successfully');
                 if (newComment) {
-                    setLocalComments((prev) => [newComment, ...prev]);
+                    refetch();
                 }
             },
             onError: (err: any) => {
@@ -88,21 +72,35 @@ const CommentComponent: FC<CommentComponentProps> = ({
                 toast.error(error instanceof Error ? error.message : 'Failed to load comments') || null
             ) : (
                 <div className='flex flex-col gap-4 max-h-96 overflow-y-auto pr-2 pt-2'>
-                    {localComments.length === 0 ? (
+                    {!data || data.length === 0 ? (
                         <div className="text-center text-gray-400 py-8">No comments yet.</div>
-                    ) : localComments.map((comment, id) => (
-                        <div className='flex justify-between' key={id}>
-                            <div className='flex flex-col gap-1' >
-                                <div className='flex gap-1 items-center'>
-                                    <Image src='/profile.jpg' alt='Profile' width={28} height={28} className='rounded-md' />
-                                    <p className='p-0 text-[#000000A3]'>Saxenasaheb</p>
-                                   {isBuyer && <BuyerTag />}
-                                    <span className='text-xs text-gray-400 ml-2'>{formatTimeAgo(comment.createdAt)}</span>
+                    ) : data.map((commentItem) => {
+                        const isBuyer = product.buyers?.some(buyer => buyer.fid === commentItem.commentorFid) || false;
+                        return(
+                            <div className='flex justify-between' key={commentItem._id}>
+                                <div className='flex flex-col gap-1' >
+                                    <div className='flex gap-1 items-center'>
+                                        <div className='relative w-5 h-5'>
+                                            <img
+                                                src={commentItem.commentor.pfp}
+                                                alt={commentItem.commentor.name}
+                                                className='rounded-xs object-cover w-full h-full'
+                                            />
+                                        </div>
+                                        <p className='p-0 text-[#000000A3]'>{commentItem.commentor.name}</p>
+                                        {isBuyer && (
+                                             <div className='flex text-[#0B92F9] text-[10px]'>
+                                             <DoubleTickIcon width={12} />
+                                             Buyer
+                                         </div>
+                                        )}
+                                        <span className='text-xs text-gray-400 ml-2'>{formatTimeAgo(commentItem.createdAt)}</span>
+                                    </div>
+                                    <p className='p-o text-[#0000007A]'>{commentItem.comment}</p>
                                 </div>
-                                <p className='p-o text-[#0000007A]'>{comment.comment}</p>
                             </div>
-                        </div>
-                    ))}
+                        )
+                    })}
                 </div>
             )}
         </div>
@@ -110,12 +108,3 @@ const CommentComponent: FC<CommentComponentProps> = ({
 };
 
 export { CommentComponent };
-
-const BuyerTag = () => {
-    return (
-        <div className='flex text-[#0B92F9] text-[10px]'>
-            <DoubleTickIcon width={12}/>
-            Buyer
-        </div>
-    )
-}

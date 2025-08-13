@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
 import type { PaginatedResponse, ApiResponse } from "@/lib/types/api";
-import type { Product } from "@/lib/types/product";
+import type { Product, Comment } from "@/lib/types/product";
 
 // Type for a single comment
-export type ProductComment = Product["comments"][number];
+export type ProductComment = Comment;
 
 // GET: Fetch comments for a product (public)
 export function useGetProductComments(productId: string, page: number = 1, limit: number = 10) {
@@ -14,7 +14,7 @@ export function useGetProductComments(productId: string, page: number = 1, limit
             const res = await fetch(`/api/products/${productId}/comments?page=${page}&limit=${limit}`);
             if (!res.ok) throw new Error("Failed to fetch comments");
             const response: PaginatedResponse<ProductComment> = await res.json();
-            return response;
+            return response.data;
         },
         enabled: !!productId,
     });

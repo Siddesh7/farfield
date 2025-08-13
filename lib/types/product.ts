@@ -1,3 +1,19 @@
+// Comment types
+export type Commentor = {
+  fid: number;
+  name: string;
+  username: string;
+  pfp: string;
+};
+
+export type Comment = {
+  _id: string;
+  commentorFid: number;
+  comment: string;
+  createdAt: string;
+  commentor: Commentor;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -5,11 +21,7 @@ export type Product = {
   images: string[];
   price: number;
   ratingsScore: number;
-  comments: {
-    commentorFid: number;
-    comment: string;
-    createdAt: Date;
-  }[];
+  comments: Comment[];
   buyer: {
     fid: number;
     purchasedAt: Date;
