@@ -1,11 +1,12 @@
 import React from 'react';
 import { useProductAccess } from '@/query/use-product-access';
 import { Button } from '@/components/ui';
-import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard } from 'lucide-react';
+import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard, Edit } from 'lucide-react';
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
 import { toast } from "sonner";
 import { DoubleTickIcon } from '@/components/icons';
+import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
 
 interface ProductAccessComponentProps {
   product: Product
@@ -15,11 +16,12 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   const { data, isLoading, error } = useProductAccess(product.id);
   const { addToCart, cart } = useGlobalContext();
   const isInCart = cart.some((p) => p.id === product.id);
+  const { authenticatedFetch } = useAuthenticatedFetch();
 
   // Handle download functionality
   const handleDownload = async (url: string, fileName: string) => {
     try {
-      const response = await fetch(url);
+      const response = await authenticatedFetch(url, { method: 'GET' });
       if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
@@ -39,6 +41,31 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     }
   };
 
+  // Handle download all files functionality
+  const handleDownloadAll = async () => {
+    if (!data?.downloadUrls || data.downloadUrls.length === 0) {
+      toast.error('No files to download');
+      return;
+    }
+
+    
+    for (let i = 0; i < data.downloadUrls.length; i++) {
+      const file = data.downloadUrls[i];
+      try {
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        await handleDownload(file.url, file.fileName);
+      } catch (error) {
+        toast.error(`Failed to download ${file.fileName}`);
+        console.error('Download error:', error);
+      }
+    }
+    
+    toast.success('Download completed!');
+  };
+
   // Handle external link copy
   const handleExternalLink = (url: string, name: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -46,6 +73,12 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     }).catch(() => {
       toast.error('Failed to copy link');
     });
+  };
+
+  // Handle edit product
+  const handleEdit = () => {
+    // TODO: Navigate to edit product page
+    toast.info('Edit functionality coming soon!');
   };
 
   // Loading state
@@ -61,7 +94,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   // Error state
   if (error) {
     return (
-      <div className="fixed left-0 bottom-15 w-full px-4 pt-4 pb-6">
+      <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
         <div className="border rounded-lg p-4">
           <div className="mt-3 flex gap-3">
             <Button
@@ -92,7 +125,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   // No data state - show purchase options
   if (!data) {
     return (
-      <div className="fixed left-0 bottom-15 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-6">
+      <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
         <div className="flex gap-3">
           <Button
             size='lg'
@@ -140,93 +173,55 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             )}
           </div>
 
-          {/* Download URLs */}
-          {data.downloadUrls && data.downloadUrls.length > 0 && (
+          {/* Show edit button if user is the creator */}
+          {data.isCreator && (
             <div className="space-y-2">
-              {data.downloadUrls.map((file, index) => (
-                <Button
-                  key={index}
-                  size='lg'
-                  className="w-full text capitalize font-semibold bg-blue-600 hover:bg-blue-700"
-                  onClick={() => handleDownload(file.url, file.fileName)}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download {file.fileName}
-                  {file.fileSize && (
-                    <span className="ml-2 text-xs opacity-80">
-                      ({(file.fileSize / 1024 / 1024).toFixed(1)} MB)
-                    </span>
-                  )}
-                </Button>
-              ))}
+              <Button
+                size='lg'
+                className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
+                onClick={handleEdit}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Product
+              </Button>
             </div>
           )}
 
-          {/* External Links */}
-          {data.externalLinks && data.externalLinks.length > 0 && (
-            <div className="space-y-2">
-              {data.externalLinks.map((link, index) => (
-                <Button
-                  key={index}
-                  size='lg'
-                  variant="default"
-                  className="w-full font-semibold rounded-xl capitalize"
-                  onClick={() => handleExternalLink(link.url, link.name)}
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Copy {link.name} Link
-                </Button>
-              ))}
-            </div>
-          )}
-
-          {/* Preview Files (if available and user has access) */}
-          {data.previewFiles && data.previewFiles.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600 font-medium">Preview Files:</div>
-              {data.previewFiles.map((file, index) => (
-                <Button
-                  key={index}
-                  size='sm'
-                  variant="outline"
-                  className="w-full text-sm bg-gray-50"
-                  onClick={() => handleDownload(file.url, file.fileName)}
-                >
-                  <Download className="mr-2 h-3 w-3" />
-                  Preview: {file.fileName}
-                </Button>
-              ))}
-            </div>
-          )}
-
-          {/* Preview Links (if available and user has access) */}
-          {data.previewLinks && data.previewLinks.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-sm text-gray-600 font-medium">Preview Links:</div>
-              {data.previewLinks.map((link, index) => (
-                <Button
-                  key={index}
-                  size='sm'
-                  variant="outline"
-                  className="w-full text-sm bg-gray-50"
-                  onClick={() => handleExternalLink(link.url, link.name)}
-                >
-                  <ExternalLink className="mr-2 h-3 w-3" />
-                  Preview: {link.name}
-                </Button>
-              ))}
-            </div>
-          )}
-
-          {/* No download content available */}
-          {(!data.downloadUrls || data.downloadUrls.length === 0) &&
-            (!data.externalLinks || data.externalLinks.length === 0) && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="text-yellow-800 text-sm">
-                  Access granted but no download content available yet.
+          {/* Show download and external links only if user is not the creator */}
+          {!data.isCreator && (
+            <>
+              {data.downloadUrls && data.downloadUrls.length > 0 && (
+                <div className="space-y-2">
+                  <Button
+                    size='lg'
+                    className="w-full font-semibold"
+                    onClick={handleDownloadAll}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Files ({data.downloadUrls.length})
+                  </Button>
                 </div>
-              </div>
-            )}
+              )}
+
+              {/* External Links */}
+              {data.externalLinks && data.externalLinks.length > 0 && (
+                <div className="space-y-2">
+                  {data.externalLinks.map((link, index) => (
+                    <Button
+                      key={index}
+                      size='lg'
+                      variant="default"
+                      className="w-full font-semibold rounded-xl capitalize"
+                      onClick={() => handleExternalLink(link.url, link.name)}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Copy {link.name} Link
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
@@ -234,7 +229,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
 
   // User doesn't have access - show purchase options
   return (
-    <div className="fixed left-0 bottom-15 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-6">
+    <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
       <div className="space-y-3">
         {/* Purchase buttons */}
         <div className="flex gap-3">

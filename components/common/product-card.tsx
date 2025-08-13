@@ -25,7 +25,7 @@ const ProductCard = ({ product }: { product: Product }) => {
                     />
                 </div>
                 <div className="absolute top-2 left-2 flex gap-2 bg-white rounded-[4px] px-1.5 py-1 items-center shadow">
-                    <CircleUser size={20} /> {product.category}
+                    <CircleUser size={14} /> {product.category}
                 </div>
             </div>
 

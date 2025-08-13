@@ -141,6 +141,10 @@
   }
 }
 
+body{
+  font-size: 14px;
+}
+
 
 .bg-fade-background {
   background-color: #0000000A;

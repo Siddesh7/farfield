@@ -3,12 +3,8 @@ import { Product } from '@/lib/types/product';
 import { CircleUser } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState } from 'react';
-import { toast } from "sonner";
 import { CommentComponent } from './comment-component';
 import { getTruncatedDescription } from '@/lib/utils';
-import { StarIcon } from '@/components/icons';
-import { useAuthenticatedAPI, useIsBuyer, useOwner } from '@/lib/hooks';
-import { useProductAccess } from '@/query';
 import ProductAccessComponent from './product-access-component';
 
 const ProductComponent = ({
@@ -17,37 +13,7 @@ const ProductComponent = ({
     product: Product
 }) => {
 
-    const { data, isLoading, error } = useProductAccess(product.id);
-
     const [showFullDescription, setShowFullDescription] = useState(false);
-    const [hoverRating, setHoverRating] = useState<number | null>(null);
-    const [displayAverage, setDisplayAverage] = useState<number>(product.ratingsScore || 0);
-    const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
-
-    const { post } = useAuthenticatedAPI();
-
-    const canRate = data?.hasPurchased;
-
-    const handleRate = async (rating: number) => {
-        if (!canRate || isSubmittingRating) return;
-        setIsSubmittingRating(true);
-        try {
-            const res = await post(`/api/products/${product.id}/ratings`, { rating });
-            if (res?.success) {
-                const avg = res?.data?.averageRating ?? res?.data?.ratingsScore ?? product.ratingsScore;
-                setDisplayAverage(avg);
-                toast.success('Rating added successfully');
-            } else {
-                toast.error(res?.error || res?.message || 'Failed to submit rating');
-            }
-        } catch (error: any) {
-            toast.error(error?.message || 'Failed to submit rating');
-        } finally {
-            setIsSubmittingRating(false);
-        }
-    }
-
-
 
     return (
         <>
@@ -60,7 +26,7 @@ const ProductComponent = ({
                 />
             </div>
 
-            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-24'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-22'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>

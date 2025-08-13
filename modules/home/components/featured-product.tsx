@@ -31,7 +31,9 @@ const FeaturedProduct = ({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                 
                 <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                    <div className="flex justify-between items-end">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent rounded-b-xl" />
+                    
+                    <div className="relative flex justify-between items-end">
                         <div className="flex-1 pr-4">
                             <h3 className="text-sm font-semibold mb-1 truncate">
                                 {product.name}
