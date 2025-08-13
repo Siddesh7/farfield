@@ -17,12 +17,9 @@ export type Product = {
   buyers?: {
     fid: number;
     purchasedAt: Date;
-    buyer: {
-      fid: number;
-      name: string;
-      username: string;
-      pfp: string | null;
-    } | null;
+    name: string;
+    username: string;
+    pfp: string | null;
   }[];
 
   // Either digitalFiles OR externalLinks

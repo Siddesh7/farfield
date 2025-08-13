@@ -4,15 +4,7 @@ import { useGlobalContext } from "@/context/global-context";
 import { HomeComponent } from "./components/home-component";
 import { ProductComponent } from "./components/product-component";
 import { Product } from "@/lib/types/product";
-
-const ProductTypes = [
-    "All",
-    "Technology",
-    "Art",
-    "Books",
-    "Music",
-    "Miscellaneous",
-];
+import { PRODUCT_TYPES } from "@/constants";
 
 type HomePageProps = {
     isLoading: boolean;
@@ -36,7 +28,7 @@ const HomePage: FC<HomePageProps> = ({
                 <HomeComponent
                     products={products}
                     setCategory={setCategory}
-                    ProductTypes={ProductTypes}
+                    ProductTypes={PRODUCT_TYPES}
                     isLoading={isLoading}
                 />
             )}

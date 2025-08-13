@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui';
-import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
-import { CirclePlus, CircleUser } from 'lucide-react';
+import { CircleUser } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState } from 'react';
 import { toast } from "sonner";
@@ -9,6 +8,8 @@ import { CommentComponent } from './comment-component';
 import { getTruncatedDescription } from '@/lib/utils';
 import { StarIcon } from '@/components/icons';
 import { useAuthenticatedAPI, useIsBuyer, useOwner } from '@/lib/hooks';
+import { useProductAccess } from '@/query';
+import ProductAccessComponent from './product-access-component';
 
 const ProductComponent = ({
     product
@@ -16,15 +17,14 @@ const ProductComponent = ({
     product: Product
 }) => {
 
-    const { addToCart, cart } = useGlobalContext();
+    const { data, isLoading, error } = useProductAccess(product.id);
+    console.log("isLoading data access",data,isLoading);
+
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [hoverRating, setHoverRating] = useState<number | null>(null);
     const [displayAverage, setDisplayAverage] = useState<number>(product.ratingsScore || 0);
     const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
 
-    const isInCart = cart.some((p) => p.id === product.id);
-    
-    const {isOwner,isLoading:checkingOwner} = useOwner(product)
     const { isBuyer, isLoading:checkingBuyer } = useIsBuyer(product);
     const { post } = useAuthenticatedAPI();
 
@@ -49,6 +49,9 @@ const ProductComponent = ({
         }
     }
 
+    console.log("Product >>",product);
+    
+
     return (
         <>
             <div className='relative w-[-webkit-fill-available] h-[275px]'>
@@ -60,7 +63,7 @@ const ProductComponent = ({
                 />
             </div>
 
-            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-24'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-18'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>
@@ -117,10 +120,10 @@ const ProductComponent = ({
                                 <div className='flex items-center'>
                                     <p className='text-sm font-normal text-fade'>Bought by:</p>
                                     <div className='flex -space-x-4 ml-2'>
-                                        {product.buyers.map((_, idx) => (
+                                        {product.buyers.map((buyer, idx) => (
                                             <Image
                                                 key={idx}
-                                                src='/profile.jpg'
+                                                src={buyer?.pfp || "/profile.jpg"}
                                                 alt={`User ${idx + 1}`}
                                                 width={22}
                                                 height={22}
@@ -158,39 +161,7 @@ const ProductComponent = ({
                 </div>
             </div>
 
-
-            <div className="fixed left-0 bottom-12 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-4 pb-6">
-                <div className="flex gap-3">
-                    <Button
-                        size='lg'
-                        variant="outline"
-                        className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        onClick={() => {
-                            if (!isInCart) {
-                                addToCart(product);
-                                toast.success('Added to cart!');
-                            }
-                        }}
-                        disabled={isInCart}
-                    >
-                        <CirclePlus />
-                        {isInCart ? 'Added to Cart' : 'Add to Cart'}
-                    </Button>
-                    <Button
-                        size='lg'
-                        className={`flex-1 font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-                        onClick={() => {
-                            if (!isInCart) {
-                                // addToCart(product);
-                                toast.success('Added to cart!');
-                            }
-                        }}
-                    >
-                        <CirclePlus />
-                        Buy Now
-                    </Button>
-                </div>
-            </div>
+            <ProductAccessComponent product={product}/>
 
         </>
     );
