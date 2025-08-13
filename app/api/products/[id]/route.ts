@@ -1,5 +1,6 @@
 import { Product } from "@/models/product";
 import { User } from "@/models/user";
+import { Purchase } from "@/models/purchase";
 import connectDB from "@/lib/db/connect";
 import {
   ApiResponseBuilder,
@@ -44,6 +45,100 @@ async function getProductByIdHandler(
 
   // Return public product data (remove buyer information for public view)
   const productObj = product.toObject();
+  delete productObj.buyer;
+
+  // Fetch creator info
+  const creatorUser = await User.findOne({
+    farcasterFid: productObj.creatorFid,
+  });
+  let creatorInfo = null;
+  if (creatorUser) {
+    creatorInfo = {
+      fid: creatorUser.farcasterFid,
+      name: creatorUser.farcaster.displayName,
+      username: creatorUser.farcaster.username,
+      pfp: creatorUser.farcaster.pfp || null,
+    };
+  }
+  productObj.creator = creatorInfo;
+  delete productObj.creatorFid;
+
+  // Add commentsPreview: 3 latest comments with commentator info
+  const comments = productObj.comments || [];
+  const latestComments = comments
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    .slice(0, 3);
+  const commentorFids = [
+    ...new Set(latestComments.map((c: any) => c.commentorFid)),
+  ];
+  const commentUsers = await User.find({
+    farcasterFid: { $in: commentorFids },
+  });
+  const commentUserMap = new Map(
+    commentUsers.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+  productObj.commentsPreview = latestComments.map((comment: any) => ({
+    _id: comment._id,
+    commentorFid: comment.commentorFid,
+    comment: comment.comment,
+    createdAt: comment.createdAt,
+    commentor: commentUserMap.get(comment.commentorFid) || null,
+  }));
+
+  // Remove comments array from product response
+  delete productObj.comments;
+
+  // Add buyers: 3 latest buyers with their info from Purchase model (actual completed purchases)
+  const completedPurchases = await Purchase.find({
+    "items.productId": id,
+    status: "completed",
+    blockchainVerified: true,
+  })
+    .sort({ completedAt: -1 })
+    .limit(3);
+
+  const buyerFids = [...new Set(completedPurchases.map((p) => p.buyerFid))];
+  const buyerUsers = await User.find({
+    farcasterFid: { $in: buyerFids },
+  });
+  const buyerUserMap = new Map(
+    buyerUsers.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  productObj.buyers = completedPurchases
+    .map((purchase) => {
+      const buyerInfo = buyerUserMap.get(purchase.buyerFid);
+      return buyerInfo
+        ? {
+            fid: buyerInfo.fid,
+            username: buyerInfo.username,
+            pfp: buyerInfo.pfp,
+            name: buyerInfo.name,
+          }
+        : null;
+    })
+    .filter(Boolean);
+
+  // Remove buyer array from product response (keep it private)
   delete productObj.buyer;
 
   return ApiResponseBuilder.success(

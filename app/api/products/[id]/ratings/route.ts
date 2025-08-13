@@ -1,5 +1,6 @@
 import { Product } from "@/models/product";
 import { User } from "@/models/user";
+import { Purchase } from "@/models/purchase";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, RequestValidator } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
@@ -135,13 +136,19 @@ async function addProductRatingHandler(
   }
 
   // Check if user has purchased the product (only buyers can rate)
-  const hasPurchased = product.buyer.some(
-    (buyer: any) => buyer.fid === user.farcasterFid
-  );
-  if (!hasPurchased && !product.isFree) {
-    return ApiResponseBuilder.forbidden(
-      "You must purchase the product before rating it"
-    );
+  if (!product.isFree) {
+    const hasPurchased = await Purchase.findOne({
+      buyerFid: user.farcasterFid,
+      "items.productId": id,
+      status: "completed",
+      blockchainVerified: true,
+    });
+
+    if (!hasPurchased) {
+      return ApiResponseBuilder.forbidden(
+        "You must purchase the product before rating it"
+      );
+    }
   }
 
   // Note: This is a simplified rating system. In a real application, you'd want to:

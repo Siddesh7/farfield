@@ -325,18 +325,35 @@ ProductSchema.methods.addRating = function (rating: number) {
     throw new Error("Rating must be between 1 and 5");
   }
 
-  this.ratingsBreakdown[rating as keyof typeof this.ratingsBreakdown]++;
+  // Ensure ratingsBreakdown is properly initialized
+  if (!this.ratingsBreakdown || typeof this.ratingsBreakdown !== 'object') {
+    this.ratingsBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  }
+
+  // Ensure all rating levels exist
+  for (let i = 1; i <= 5; i++) {
+    if (typeof this.ratingsBreakdown[i] !== 'number') {
+      this.ratingsBreakdown[i] = 0;
+    }
+  }
+
+  // Ensure totalRatings is a number
+  if (typeof this.totalRatings !== 'number' || isNaN(this.totalRatings)) {
+    this.totalRatings = 0;
+  }
+
+  this.ratingsBreakdown[rating]++;
   this.totalRatings++;
 
-  // Recalculate average rating
-  const totalScore = Object.entries(this.ratingsBreakdown).reduce(
-    (sum, [star, count]) => {
-      return sum + parseInt(star) * (count as number);
-    },
-    0
-  );
+  // Recalculate average rating with safer calculation
+  let totalScore = 0;
+  for (let star = 1; star <= 5; star++) {
+    const count = this.ratingsBreakdown[star] || 0;
+    totalScore += star * count;
+  }
 
-  this.ratingsScore = totalScore / this.totalRatings;
+  // Prevent division by zero
+  this.ratingsScore = this.totalRatings > 0 ? totalScore / this.totalRatings : 0;
 
   return this.save();
 };

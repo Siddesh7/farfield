@@ -62,8 +62,34 @@ async function getProductCommentsHandler(
     )
     .slice(skip, skip + limit);
 
+  // Batch fetch user info for all unique commentorFids
+  const uniqueFids = [
+    ...new Set(paginatedComments.map((c: any) => c.commentorFid)),
+  ];
+  const users = await User.find({ farcasterFid: { $in: uniqueFids } });
+  const userMap = new Map(
+    users.map((u) => [
+      u.farcasterFid,
+      {
+        fid: u.farcasterFid,
+        name: u.farcaster.displayName,
+        username: u.farcaster.username,
+        pfp: u.farcaster.pfp || null,
+      },
+    ])
+  );
+
+  // Attach user info to each comment
+  const commentsWithUser = paginatedComments.map((comment: any) => ({
+    _id: comment._id,
+    commentorFid: comment.commentorFid,
+    comment: comment.comment,
+    createdAt: comment.createdAt,
+    commentor: userMap.get(comment.commentorFid) || null,
+  }));
+
   return ApiResponseBuilder.paginated(
-    paginatedComments,
+    commentsWithUser,
     page,
     limit,
     total,
@@ -123,7 +149,13 @@ async function addProductCommentHandler(
   await product.addComment(user.farcasterFid, body.comment);
 
   // Get the newly added comment
-  const newComment = product.comments[product.comments.length - 1];
+  const rawComment = product.comments[product.comments.length - 1];
+  const newComment = {
+    _id: rawComment._id,
+    commentorFid: rawComment.commentorFid,
+    comment: rawComment.comment,
+    createdAt: rawComment.createdAt,
+  };
 
   return ApiResponseBuilder.success(
     newComment,
