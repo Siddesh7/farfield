@@ -10,6 +10,7 @@ import {
 import { ChevronDown, ChevronUp, Files, FileText, Plus, Upload } from 'lucide-react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
+import { LoadingSpinner } from '@/components/ui';
 import { ProductFormVariables } from '../create-product';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
@@ -26,10 +27,15 @@ interface AddProductFormProps {
     coverImageURL: string | null;
     setCoverImageURL: (url: string | null) => void;
     handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    isUploadingCover?: boolean;
     previewFileInputRef: React.RefObject<HTMLInputElement | null>;
     handlePreviewFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    isUploadingPreview?: boolean;
+    previewError?: string | null;
     productFilesInputRef: React.RefObject<HTMLInputElement | null>;
     handleProductFilesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    isUploadingProduct?: boolean;
+    productUploadError?: string | null;
     handleProductLinkChange: (value: string) => void;
     errors?: { [key: string]: string };
 }
@@ -43,10 +49,15 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     coverImageURL,
     setCoverImageURL,
     handleImageChange,
+    isUploadingCover,
     previewFileInputRef,
     handlePreviewFileChange,
+    isUploadingPreview,
+    previewError,
     productFilesInputRef,
     handleProductFilesChange,
+    isUploadingProduct,
+    productUploadError,
     handleProductLinkChange,
     errors = {},
 }) => {
@@ -69,10 +80,17 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 {coverImageURL ? (
                     <div className="relative w-['-webkit-fill-available'] h-[250px] rounded overflow-hidden border">
                         <Image src={coverImageURL} alt="Cover" fill style={{ objectFit: 'cover' }} />
-                        <Button type="button" variant="outline" className="absolute top-2 right-2 z-10" onClick={() => setCoverImageURL(null)}>Remove</Button>
+                        <Button type="button" variant="outline" className="absolute top-2 right-2 z-10" onClick={() => { setCoverImageURL(null); setFormVariables('images', '' as any); setFormVariables('coverImageFile', null as any); }}>Remove</Button>
+                        {isUploadingCover && (
+                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <div className="flex items-center gap-2 text-white text-sm">
+                                    <LoadingSpinner size='sm' /> Uploading cover...
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
-                    <div className='bg-fade-background flex flex-col items-center justify-center py-9 px-20' onClick={() => fileInputRef?.current?.click()}>
+                    <div className={`bg-fade-background flex flex-col items-center justify-center py-9 px-20 ${isUploadingCover ? 'opacity-70 pointer-events-none' : ''}`} onClick={() => fileInputRef?.current?.click()}>
                         <div className='flex flex-col items-center justify-center gap-3'>
                             <div className='bg-fade-background px-2 py-2 w-max'>
                                 <Plus />
@@ -82,6 +100,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                 <p className='text-sm text-fade'>Max 5mb</p>
                             </div>
                         </div>
+                        {isUploadingCover && (
+                            <div className="mt-2 text-xs text-fade flex items-center gap-2">
+                                <LoadingSpinner size='sm' /> Uploading...
+                            </div>
+                        )}
                     </div>
                 )}
                 <input
@@ -146,7 +169,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
 
             {/* Description */}
             <div className='flex flex-col gap-2'>
-                <Label htmlFor="description" className='text-fade text-xs'>Add Description (Max 200 Characters)<span className="text-red-500">*</span> </Label>
+                <Label htmlFor="description" className='text-fade text-xs'>Add Description (Max 250 Characters)<span className="text-red-500">*</span> </Label>
                 <textarea
                     id="description"
                     className="w-full border rounded px-3 py-2 mt-1 resize-none text-sm bg-fade-background"
@@ -187,7 +210,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 {formVariables.togglePreviewImage && (
                     <div className="flex flex-col gap-2 mt-2 ">
                         <div
-                            className="flex gap-2 bg-fade-background px-4 py-5.5 justify-center rounded text-center cursor-pointer text-sm text-fade"
+                            className={`flex gap-2 bg-fade-background px-4 py-5.5 justify-center rounded text-center cursor-pointer text-sm text-fade ${isUploadingPreview ? 'opacity-70 pointer-events-none' : ''}`}
                             onClick={() => previewFileInputRef.current?.click()}
                         >
                             <Upload />
@@ -201,6 +224,12 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             className="hidden"
                             onChange={handlePreviewFileChange}
                         />
+                        {isUploadingPreview && (
+                            <div className="text-xs text-fade mt-1 flex items-center gap-2">
+                                <LoadingSpinner size='sm' /> Uploading preview...
+                            </div>
+                        )}
+                        {previewError && <div className="text-red-500 text-xs">{previewError}</div>}
                         {formVariables.previewFile && (
                             <div className="text-xs mt-2 flex items-center justify-between">
                                 <div className='flex gap-0.5 items-center'>
@@ -218,7 +247,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                     size="sm"
                                     variant="ghost"
                                     className="text-red-500 px-2 py-0 h-6"
-                                    onClick={() => setFormVariables('previewFile', null)}
+                                    onClick={() => { setFormVariables('previewFile', null as any); setFormVariables('previewFiles', [] as any); }}
                                 >
                                     Remove
                                 </Button>
@@ -254,7 +283,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 {!formVariables.hasExternalLinks ? (
                     <div className="flex flex-col gap-2 mt-2 ">
                         <div
-                            className="flex gap-2 bg-fade-background px-4 py-5.5 justify-center rounded text-center cursor-pointer text-sm text-fade"
+                            className={`flex gap-2 bg-fade-background px-4 py-5.5 justify-center rounded text-center cursor-pointer text-sm text-fade ${isUploadingProduct ? 'opacity-70 pointer-events-none' : ''}`}
                             onClick={() => productFilesInputRef.current?.click()}
                         >
                             <Upload />
@@ -268,6 +297,12 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             className="hidden"
                             onChange={handleProductFilesChange}
                         />
+                        {isUploadingProduct && (
+                            <div className="text-xs text-fade mt-1 flex items-center gap-2">
+                                <LoadingSpinner size='sm' /> Uploading file...
+                            </div>
+                        )}
+                        {productUploadError && <div className="text-red-500 text-xs">{productUploadError}</div>}
                         {/* Show selected files */}
                         {formVariables.productFiles && formVariables.productFiles.length > 0 && (
                             <div className="text-xs mt-2">
@@ -283,6 +318,8 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                             onClick={() => {
                                                 const newFiles = formVariables.productFiles.filter((_, i) => i !== idx);
                                                 setFormVariables('productFiles', newFiles as any);
+                                                const filteredDigital = (formVariables.digitalFiles || []).filter(df => df.fileName !== file.name);
+                                                setFormVariables('digitalFiles', filteredDigital as any);
                                             }}
                                         >
                                             Remove

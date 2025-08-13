@@ -63,7 +63,6 @@ const defaultFormVariables: ProductFormVariables = {
 const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void }) => {
 
     const { post } = useAuthenticatedAPI();
-    const { setActiveModule } = useGlobalContext();
     const [open, setOpen] = useState(false);
 
     const [productId, setProductId] = useState<string | null>(null);
@@ -77,20 +76,24 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [coverImageURL, setCoverImageURL] = useState<string | null>(null);
     const [coverError, setCoverError] = useState<string | null>(null);
+    const [isUploadingCover, setIsUploadingCover] = useState<boolean>(false);
 
     // Preview Image/pdf
     const previewFileInputRef = useRef<HTMLInputElement | null>(null);
+    const [isUploadingPreview, setIsUploadingPreview] = useState<boolean>(false);
+    const [previewError, setPreviewError] = useState<string | null>(null);
 
     // for product file
     const productFilesInputRef = useRef<HTMLInputElement | null>(null);
-
+    const [isUploadingProduct, setIsUploadingProduct] = useState<boolean>(false);
+    const [productUploadError, setProductUploadError] = useState<string | null>(null);
 
     const handleFormVariableChange = (name: keyof ProductFormVariables, value: string | boolean | null) => {
         setFormVariables(prev => ({ ...prev, [name]: value }));
     };
 
-    // Cover image file handler
-    const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Cover image file handler - immediate upload
+    const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) {
@@ -99,41 +102,105 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
         }
         const img = new window.Image();
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = async (ev) => {
             const target = ev.target as FileReader | null;
             if (target && typeof target.result === 'string') {
                 img.src = target.result;
-                img.onload = () => {
-                    // if (img.width <= img.height) {
-                    //     setCoverError("Image must be in landscape format");
-                    //     setFormVariables(prev => ({ ...prev, coverImageFile: null }));
-                    //     setCoverImageURL(null);
-                    // } else {
-                    setCoverError(null);
-                    setFormVariables(prev => ({ ...prev, coverImageFile: file }));
-                    setCoverImageURL(target.result as string);
-                    // }
+                img.onload = async () => {
+                    try {
+                        setCoverError(null);
+                        setIsUploadingCover(true);
+                        setCoverImageURL(target.result as string);
+                        const res = await uploadFile(file);
+                        if (res && res.fileKey) {
+                            setFormVariables(prev => ({
+                                ...prev,
+                                coverImageFile: file,
+                                images: [res.fileKey],
+                            } as any));
+                        } else {
+                            setCoverError('Failed to upload image.');
+                            setCoverImageURL(null);
+                        }
+                    } catch (err: any) {
+                        console.error('Cover upload error', err);
+                        setCoverError(err?.message || 'Failed to upload image');
+                        setCoverImageURL(null);
+                    } finally {
+                        setIsUploadingCover(false);
+                    }
                 };
             }
         };
         reader.readAsDataURL(file);
     };
 
-    // Preview file handler
-    const handlePreviewFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Preview file handler - immediate upload
+    const handlePreviewFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setPreviewError(null);
         setFormVariables(prev => ({ ...prev, previewFile: file }));
+        try {
+            setIsUploadingPreview(true);
+            const res = await uploadFile(file);
+            if (res && res.fileKey && res.size && res.originalName) {
+                setFormVariables(prev => ({
+                    ...prev,
+                    previewFiles: [{
+                        fileName: res.originalName,
+                        fileUrl: res.fileKey,
+                        fileSize: res.size,
+                    }],
+                } as any));
+            } else {
+                setPreviewError('Failed to upload preview file.');
+            }
+        } catch (err: any) {
+            console.error('Preview upload error', err);
+            setPreviewError(err?.message || 'Failed to upload preview file');
+        } finally {
+            setIsUploadingPreview(false);
+        }
     };
 
-    // Product files handler (multiple)
-    const handleProductFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Product files handler (multiple) - immediate upload
+    const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setFormVariables(prev => ({
                 ...prev,
                 productFiles: [...(prev.productFiles || []), file],
             }));
+            try {
+                setProductUploadError(null);
+                setIsUploadingProduct(true);
+                const res = await uploadFile(file);
+                if (res && res.fileKey && res.size && res.originalName) {
+                    setFormVariables(prev => ({
+                        ...prev,
+                        digitalFiles: [
+                            ...prev.digitalFiles,
+                            {
+                                fileName: res.originalName,
+                                fileUrl: res.fileKey,
+                                fileSize: res.size,
+                            },
+                        ],
+                    } as any));
+                } else {
+                    setProductUploadError('Failed to upload product file.');
+                }
+            } catch (err: any) {
+                console.error('Product file upload error', err);
+                setProductUploadError(err?.message || 'Failed to upload product file');
+                setFormVariables(prev => ({
+                    ...prev,
+                    productFiles: prev.productFiles.filter((f) => f !== file),
+                } as any));
+            } finally {
+                setIsUploadingProduct(false);
+            }
         }
         e.target.value = '';
     };
@@ -172,47 +239,16 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 hasExternalLinks: formVariables.hasExternalLinks
             }
 
-            let images: string[] = [];
-            if (formVariables.coverImageFile) {
-                const res = await uploadFile(formVariables.coverImageFile);
-                if (res && res.fileKey) {
-                    images.push(res.fileKey);
-                }
-            }
+            // Use already-uploaded keys from state
+            const images: string[] = Array.isArray(formVariables.images)
+                ? (formVariables.images as string[])
+                : formVariables.images
+                    ? [formVariables.images as string]
+                    : [];
 
-            let previewFiles: {
-                fileName: string;
-                fileUrl: string;
-                fileSize: number;
-            }[] = [];
-            if (formVariables.togglePreviewImage && formVariables.previewFile) {
-                const res = await uploadFile(formVariables.previewFile);
-                if (res && res.fileKey && res.size && res.originalName) {
-                    previewFiles.push({
-                        fileName: res.originalName,
-                        fileUrl: res.fileKey,
-                        fileSize: res.size,
-                    });
-                }
-            }
+            const previewFiles = formVariables.togglePreviewImage ? (formVariables.previewFiles || []) : [];
 
-            let digitalFiles: {
-                fileName: string;
-                fileUrl: string;
-                fileSize: number;
-            }[] = [];
-            if (!formVariables.hasExternalLinks && formVariables.productFiles.length > 0) {
-                for (const file of formVariables.productFiles) {
-                    const res = await uploadFile(file);
-                    if (res && res.fileKey && res.size && res.originalName) {
-                        digitalFiles.push({
-                            fileName: res.originalName,
-                            fileUrl: res.fileKey,
-                            fileSize: res.size,
-                        });
-                    }
-                }
-            }
+            const digitalFiles = !formVariables.hasExternalLinks ? (formVariables.digitalFiles || []) : [];
 
             const payload = formVariables.hasExternalLinks
                 ? {
@@ -298,16 +334,21 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 coverImageURL={coverImageURL}
                 setCoverImageURL={setCoverImageURL}
                 handleImageChange={handleCoverImageChange}
+                isUploadingCover={isUploadingCover}
                 previewFileInputRef={previewFileInputRef}
                 handlePreviewFileChange={handlePreviewFileChange}
+                isUploadingPreview={isUploadingPreview}
+                previewError={previewError}
                 productFilesInputRef={productFilesInputRef}
                 handleProductFilesChange={handleProductFilesChange}
+                isUploadingProduct={isUploadingProduct}
+                productUploadError={productUploadError}
                 handleProductLinkChange={handleProductLinkChange}
                 errors={errors}
             />
             <div className="flex gap-3 justify-end pb-9">
                 <Button className='flex-1' type="button" variant='outline' size="lg">Draft</Button>
-                <Button className='flex-2' type="button" onClick={handleFormSubmit} disabled={creatingProduct} size='lg'>
+                <Button className='flex-2' type="button" onClick={handleFormSubmit} disabled={creatingProduct || isUploadingCover || isUploadingPreview || isUploadingProduct} size='lg'>
                     {step === 'creating' && (
                         <div className='flex gap-1 items-center'>
                             <LoadingSpinner size='sm' color='secondary' />
