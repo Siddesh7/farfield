@@ -85,6 +85,7 @@ async function getProductByIdHandler(
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
+        isVerified: u.isVerified,
       },
     ])
   );
@@ -120,6 +121,7 @@ async function getProductByIdHandler(
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
+        isVerified: u.isVerified,
       },
     ])
   );
