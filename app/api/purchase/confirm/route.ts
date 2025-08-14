@@ -1,7 +1,7 @@
 import { Purchase } from "@/models/purchase";
+import { Product } from "@/models/product";
 import { User } from "@/models/user";
 import connectDB from "@/lib/db/connect";
-import { farfieldContract, transactionUtils } from "@/lib/blockchain/client";
 import {
   ApiResponseBuilder,
   withErrorHandling,
@@ -9,6 +9,8 @@ import {
   HTTP_STATUS,
 } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { farfieldContract, transactionUtils } from "@/lib/blockchain";
+import { NotificationService } from "@/lib/services/notification-service";
 
 interface ConfirmPurchaseRequest {
   purchaseId: string;
@@ -126,8 +128,34 @@ async function confirmPurchaseHandler(
       HTTP_STATUS.BAD_REQUEST
     );
   }
+  
   // Mark purchase as completed
   await purchase.markCompleted(body.transactionHash);
+
+  // 🚀 NEW: Trigger notifications for purchase
+  try {
+    // Get all products and their details for notifications
+    const productIds = purchase.items.map((item: any) => item.productId);
+    const products = await Product.find({ _id: { $in: productIds } });
+
+    // Create notifications for each product
+    for (const item of purchase.items) {
+      const product = products.find(p => p._id.toString() === item.productId);
+      if (product) {
+        await NotificationService.handlePurchaseEvent({
+          productId: product._id.toString(),
+          productName: product.name,
+          buyerFid: fid,
+          sellerFid: item.sellerFid,
+          price: item.price / 1000000, // Convert from micro-dollars to dollars
+        });
+      }
+    }
+  } catch (notificationError) {
+    console.error("Error creating purchase notifications:", notificationError);
+    // Don't fail the purchase confirmation if notifications fail
+  }
+
   // Prepare response
   const responseData = {
     purchaseId: body.purchaseId,

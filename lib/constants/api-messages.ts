@@ -38,6 +38,12 @@ export const API_MESSAGES = {
   SEARCH_COMPLETED_SUCCESS: "Search completed successfully",
   NO_USERS_FOUND: "No users found matching the criteria",
 
+  // Notification messages
+  NOTIFICATIONS_RETRIEVED_SUCCESS: "Notifications retrieved successfully",
+  NOTIFICATIONS_MARKED_READ_SUCCESS: "All notifications marked as read",
+  NO_NOTIFICATIONS_FOUND: "No notifications found",
+  NOTIFICATION_CREATED_SUCCESS: "Notification created successfully",
+
   // Generic messages
   INTERNAL_SERVER_ERROR: "Internal server error",
   VALIDATION_ERROR: "Validation error",
