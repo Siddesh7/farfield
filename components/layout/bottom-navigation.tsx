@@ -1,6 +1,7 @@
 import {
   HistoryIcon,
   HomeIcon,
+  NotificationIcon,
   PlusIcon,
   ShoppingIcon,
   UserIcon,
@@ -53,10 +54,10 @@ const BottomNavigation = () => {
         isActive={activeModule === "add-product"}
         onClick={() => handleModuleClick("add-product")}
       />
-      <HistoryIcon
+      <NotificationIcon
         width={28}
-        isActive={activeModule === "reminder"}
-        onClick={() => handleModuleClick("reminder")}
+        isActive={activeModule === "notifications"}
+        onClick={() => handleModuleClick("notifications")}
       />
       <UserIcon
         width={28}
