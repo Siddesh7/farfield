@@ -55,7 +55,7 @@ const BottomNavigation = () => {
         onClick={() => handleModuleClick("add-product")}
       />
       <NotificationIcon
-        width={28}
+        width={22}
         isActive={activeModule === "notifications"}
         onClick={() => handleModuleClick("notifications")}
       />
