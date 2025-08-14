@@ -254,7 +254,7 @@ export default function TestPage() {
         put("/api/users/me/farcaster", {
           displayName: "Test Farcaster Update",
           bio: "Updated Farcaster bio",
-          pfp: "https://example.com/test-pfp.jpg",
+          pfp: "",
         }),
       "Update Farcaster profile"
     );
