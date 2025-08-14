@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { DoubleTickIcon } from '@/components/icons';
 import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
 import { useProductAccess } from '@/query/use-product-access';
+import JSZip from 'jszip';
 
 interface ProductAccessComponentProps {
   product: Product
@@ -41,29 +42,40 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     }
   };
 
-  // Handle download all files functionality
+  // Handle download all files functionality (zip when multiple files)
   const handleDownloadAll = async () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
       toast.error('No files to download');
       return;
     }
 
-    
-    for (let i = 0; i < data.downloadUrls.length; i++) {
-      const file = data.downloadUrls[i];
-      try {
-        if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      if (data.downloadUrls.length > 1) {
+        const zip = new JSZip();
+        for (const file of data.downloadUrls) {
+          const res = await authenticatedFetch(file.url, { method: 'GET' });
+          if (!res.ok) throw new Error(`Failed to fetch ${file.fileName}`);
+          const arrayBuffer = await res.arrayBuffer();
+          zip.file(file.fileName, arrayBuffer);
         }
-        
+        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const url = window.URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${data.productTitle || 'download'}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast.success('Zip download started');
+      } else {
+        const file = data.downloadUrls[0];
         await handleDownload(file.url, file.fileName);
-      } catch (error) {
-        toast.error(`Failed to download ${file.fileName}`);
-        console.error('Download error:', error);
       }
+    } catch (error) {
+      toast.error('Download failed. Please try again.');
+      console.error('Zip download error:', error);
     }
-    
-    toast.success('Download completed!');
   };
 
   // Handle external link copy
@@ -193,7 +205,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                     onClick={handleDownloadAll}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    Download Files ({data.downloadUrls.length})
+                    Download
                   </Button>
                 </div>
               )}

@@ -104,7 +104,7 @@ const ProductComponent = ({
                 </div>
             </div>
 
-            <div className="fixed left-0 bottom-15 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
+            <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
                 <ProductAccessComponent product={product} />
             </div>
         </>
