@@ -703,6 +703,27 @@ export default function TestPage() {
     }
   };
 
+  // Add these new test functions after the existing product test functions (around line 561)
+
+  // Featured Products Tests
+  const testGetFeaturedProducts = () =>
+    runTest(
+      "GET /api/products/featured",
+      () => fetch("/api/products/featured").then((r) => r.json()),
+      "Get top 3 featured products across all categories (Public)"
+    );
+
+  const testGetCategoryFeaturedProducts = () => {
+    // You can change this category to test with different categories
+    const testCategory = "Design"; // Change this to test different categories
+    return runTest(
+      `GET /api/products/category/${testCategory}/featured`,
+      () => fetch(`/api/products/category/${testCategory}/featured`).then((r) => r.json()),
+      `Get top 3 featured products in "${testCategory}" category (Public)`
+    );
+  };
+
+  // In the runPublicProductTests function (around line 706), add the new tests:
   const runPublicProductTests = async () => {
     setIsRunning(true);
     clearResults();
@@ -711,6 +732,8 @@ export default function TestPage() {
       await testGetProducts();
       await testSearchProducts();
       await testGetCategories();
+      await testGetFeaturedProducts(); // Add this line
+      await testGetCategoryFeaturedProducts(); // Add this line
 
       if (createdProductId) {
         await testGetProductById();
@@ -1930,6 +1953,22 @@ export default function TestPage() {
                 className="bg-blue-700 hover:bg-blue-800 text-white"
               >
                 🛒 Buy Product (Onchain)
+              </Button>
+              <Button
+                onClick={testGetFeaturedProducts}
+                disabled={isRunning}
+                size="sm"
+                variant="outline"
+              >
+                🌍 GET Featured Products
+              </Button>
+              <Button
+                onClick={testGetCategoryFeaturedProducts}
+                disabled={isRunning}
+                size="sm"
+                variant="outline"
+              >
+                🌍 GET Category Featured
               </Button>
             </div>
 
