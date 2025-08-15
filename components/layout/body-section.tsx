@@ -4,6 +4,7 @@ import { HomePage } from '@/modules/home';
 import React, { useState } from 'react';
 import { ProfilePage } from '@/modules/profile';
 import { useGetProducts } from '@/query';
+import { CreateProduct } from '@/modules/createProduct';
 
 const BodySection = () => {
     const { activeModule } = useGlobalContext();
@@ -19,6 +20,7 @@ const BodySection = () => {
         <div className="pb-8 mb-8 flex flex-1 flex-col">
             {activeModule === 'home' && <HomePage isLoading={loadingProducts} products={allProducts} setCategory={setCategory} />}
             {activeModule === 'cart' && <CartPage />}
+            {activeModule === 'add-product' && <CreateProduct refetchAllProducts={refetchAllProducts} />}
             {activeModule === 'profile' && <ProfilePage />}
         </div>
     );
