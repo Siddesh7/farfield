@@ -1,12 +1,12 @@
 import { Button } from '@/components/ui';
-import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
-import { CirclePlus } from 'lucide-react';
+import { CircleUser } from 'lucide-react';
 import Image from 'next/image';
 import React, { useState } from 'react';
-import { toast } from "sonner";
 import { CommentComponent } from './comment-component';
 import { getTruncatedDescription } from '@/lib/utils';
+import ProductAccessComponent from './product-access-component';
+import { BASE_URL } from '@/config';
 
 const ProductComponent = ({
     product
@@ -14,57 +14,33 @@ const ProductComponent = ({
     product: Product
 }) => {
 
-    const [comment, setComment] = useState<string>('')
-    const { addToCart, cart } = useGlobalContext();
     const [showFullDescription, setShowFullDescription] = useState(false);
-
-    const isInCart = cart.some((p) => p._id === product._id);
 
     return (
         <>
-            {/* Image Container */}
-            <div className='relative w-[-webkit-fill-available] h-[350px]'>
-                <Image
-                    src='/Product_Image.png'
-                    alt='Product Image'
-                    fill
-                    className='rounded-none'
+            <div className='relative w-[-webkit-fill-available] h-[275px]'>
+                <img
+                    src={`${BASE_URL}/api/images/${product.images[0]}`}
+                    alt={product.name}
+                    style={{ objectFit: "cover" }}
+                    className="object-cover w-full h-full"
                 />
             </div>
 
-            {/* Body Component */}
-            <div className='flex flex-col gap-11 pt-5.5 px-5.5'>
+            <div className='flex flex-col gap-11 pt-5.5 px-5.5 pb-22'>
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
-                        <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
-                            <Image
-                                src='/profile.jpg'
-                                alt={`User `}
-                                width={20}
-                                height={20}
-                                className='rounded-xs'
-                            />
-                            <p className='p-0 text-sm text-[#000000A3]'>Saxenasaheb</p>
-                        </div>
-                        <p className='font-inter text-lg font-medium'>{product.name}</p>
                         <div className='flex justify-between items-center'>
-                            <div className='flex items-center'>
-                                <p className='text-sm font-normal text-fade'>Bought by:</p>
-                                <div className='flex -space-x-4 ml-2'>
-                                    {product.buyer.map((_, idx) => (
-                                        <Image
-                                            key={idx}
-                                            src='/profile.jpg'
-                                            alt={`User ${idx + 1}`}
-                                            width={22}
-                                            height={22}
-                                            className='rounded-xs'
-                                            style={{ zIndex: idx }}
-                                        />
-                                    ))}
+                            <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
+                                <div className='relative w-5 h-5'>
+                                    <img
+                                        src={product.creator?.pfp}
+                                        alt={product.creator?.name}
+                                        className='rounded-xs object-cover w-full h-full'
+                                    />
                                 </div>
+                                <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
                             </div>
-
                             <div className='flex gap-2 items-center bg-blue'>
                                 <div className="flex items-center justify-center">
                                     <Image
@@ -78,7 +54,32 @@ const ProductComponent = ({
                                 <p className='font-semibold text-xl'>${product.price}</p>
                             </div>
                         </div>
-                        {/* Description with View More/Less */}
+                        <div className='flex flex-col gap-2'>
+                            <p className='font-inter text-lg font-medium'>{product.name}</p>
+                            <div className="flex gap-2 bg-[#0000000A] w-min rounded-[4px] px-1.5 items-center shadow">
+                                <CircleUser size={20} /> {product.category}
+                            </div>
+                        </div>
+                        <div className='flex justify-between items-center py-2'>
+                            {product.buyers && product.buyers.length > 0 && (
+                                <div className='flex items-center'>
+                                    <p className='text-sm font-normal text-fade'>Bought by:</p>
+                                    <div className='flex -space-x-2 ml-2'>
+                                        {product.buyers.map((buyer, idx) => (
+                                            <div className='relative w-7 h-7 ' key={idx}>
+                                                <img
+                                                    src={buyer?.pfp || "/profile.jpg"}
+                                                    alt={`User ${idx + 1}`}
+                                                    className='rounded-md p-1 bg-white object-cover w-full h-full'
+                                                    style={{ zIndex: idx }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         <div>
                             <p className='font-inter text-sm font-normal text-fade'>
                                 {showFullDescription
@@ -88,7 +89,7 @@ const ProductComponent = ({
                                 {product.description.length > 150 && (
                                     <Button
                                         variant="link"
-                                        className="p-0 h-auto min-h-0 text-blue-600 text-xs font-semibold ml-1 align-baseline"
+                                        className="p-0 cursor-pointer h-auto min-h-0 text-blue-600 text-xs font-semibold ml-1 align-baseline"
                                         onClick={() => setShowFullDescription((prev) => !prev)}
                                     >
                                         {showFullDescription ? 'View Less' : 'View More'}
@@ -98,31 +99,14 @@ const ProductComponent = ({
                         </div>
                     </div>
                     <CommentComponent
-                        comment={comment}
-                        setComment={setComment}
-                        user_comments={product.comments}
+                        product={product}
                     />
                 </div>
             </div>
 
-
-            <div className="fixed left-0 bottom-12 w-full backdrop-blur-3xl bg-gray-200/60 px-4 pt-6 pb-8">
-                <Button
-                    size='lg'
-                    className={`w-full font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    onClick={() => {
-                        if (!isInCart) {
-                            addToCart(product);
-                            toast.success('Added to cart!');
-                        }
-                    }}
-                    disabled={isInCart}
-                >
-                    <CirclePlus />
-                    {isInCart ? 'Added to Cart' : 'Add to Cart'}
-                </Button>
+            <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
+                <ProductAccessComponent product={product} />
             </div>
-
         </>
     );
 };

@@ -1,4 +1,4 @@
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode } from 'react';
 
 const BoxContainer = ({
     children,
@@ -8,7 +8,10 @@ const BoxContainer = ({
     className?: string
 }) => {
     return (
-        <div className={`${className}`}>
+        <div
+            className={`${className}`}
+
+        >
             {children}
         </div>
     );
