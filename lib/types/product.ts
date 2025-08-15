@@ -144,3 +144,35 @@ export interface ProductAccessResponse {
     isSubscribed: boolean;
   } | null;
 }
+
+export type CreateProductFormVariables = {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  hasExternalLinks: boolean;
+  images: string[];
+  digitalFiles: Array<{
+      fileName: string;
+      fileUrl: string;
+      fileSize: number;
+  }>;
+  externalLinks: Array<{
+      name: string;
+      url: string;
+      type: string;
+  }>;
+  previewFiles: Array<{
+      fileName: string;
+      fileUrl: string;
+      fileSize: number;
+  }>;
+  tags: string[] | string;
+  fileFormat: string[] | string;
+  discountPercentage?: number;
+  coverImageFile: File | null;  // cover image file
+  togglePreviewImage: boolean;
+  previewFile: File | null; // preview image file
+  productFiles: File[]; // product files
+  productLink: string;
+};
