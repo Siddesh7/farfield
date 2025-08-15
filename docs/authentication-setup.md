@@ -70,7 +70,6 @@ function MyComponent() {
   const fetchUserProfile = async () => {
     try {
       const response = await get("/api/users/me");
-      console.log("User profile:", response.data);
     } catch (error) {
       console.error("Failed to fetch profile:", error);
     }

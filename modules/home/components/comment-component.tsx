@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatTimeAgo } from '@/lib/utils';
 import { DoubleTickIcon } from '@/components/icons';
-import { useAddProductComment, useGetProductComments } from '@/query/use-comment';
+import { useAddProductComment, useGetProductComments } from '@/query';
 
 const CommentComponent = ({
     product,

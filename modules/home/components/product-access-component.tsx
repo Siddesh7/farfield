@@ -4,7 +4,7 @@ import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard, Edit } fr
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
 import { toast } from "sonner";
-import { DoubleTickIcon } from '@/components/icons';
+import { CopyIcon, DoubleTickIcon } from '@/components/icons';
 import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
 import { useProductAccess } from '@/query/use-product-access';
 import JSZip from 'jszip';
@@ -106,168 +106,170 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   // Error state
   if (error) {
     return (
-        <div className="border rounded-lg p-4">
-          <div className="mt-3 flex gap-3">
-            <Button
-              size='lg'
-              variant="outline"
-              className="flex-1 font-semibold bg-white"
-              onClick={() => {
-                addToCart(product);
-                toast.success('Added to cart!');
-              }}
-            >
-              <CirclePlus />
-              Add to Cart
-            </Button>
-            <Button
-              size='lg'
-              className="flex-1 font-semibold"
-            >
-              <CreditCard />
-              Buy Now
-            </Button>
-          </div>
-        </div>
-    );
-  }
-
-  // No data state - show purchase options
-  if (!data) {
-    return (
-        <div className="flex gap-3">
+      <div className="border rounded-lg p-4">
+        <div className="mt-3 flex gap-3">
           <Button
             size='lg'
             variant="outline"
-            className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className="flex-1 font-semibold bg-white"
             onClick={() => {
-              if (!isInCart) {
-                addToCart(product);
-                toast.success('Added to cart!');
-              }
+              addToCart(product);
+              toast.success('Added to cart!');
             }}
-            disabled={isInCart}
           >
-            <ShoppingCart />
-            {isInCart ? 'Added to Cart' : 'Add to Cart'}
+            <CirclePlus />
+            Add to Cart
           </Button>
           <Button
             size='lg'
-            className={`flex-1 font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-            onClick={() => {
-              if (!isInCart) {
-                addToCart(product);
-                toast.success('Added to cart!');
-              }
-            }}
-          >
-            <CreditCard />
-            Buy Now
-          </Button>
-        </div>
-    );
-  }
-
-  if (data.hasAccess || data.hasPurchased) {
-    return (
-        <div className="">
-          <div className=" rounded-lg px-3 py-2">
-            {data.purchaseDetails && (
-              <div className="flex flex-row items-center justify-center gap-1 text-[#0ED065] text-xs mt-1 text-center">
-                <DoubleTickIcon width={20} color="#0ED065" />
-                <span>You have already purchased the product</span>
-              </div>
-            )}
-          </div>
-
-          {/* Show edit button if user is the creator */}
-          {data.isCreator && (
-            <div className="space-y-2">
-              <Button
-                size='lg'
-                className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
-                onClick={handleEdit}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Product
-              </Button>
-            </div>
-          )}
-
-          {/* Show download and external links only if user is not the creator */}
-          {!data.isCreator && (
-            <>
-              {data.downloadUrls && data.downloadUrls.length > 0 && (
-                <div className="space-y-2">
-                  <Button
-                    size='lg'
-                    className="w-full font-semibold"
-                    onClick={handleDownloadAll}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Download
-                  </Button>
-                </div>
-              )}
-
-              {/* External Links */}
-              {data.externalLinks && data.externalLinks.length > 0 && (
-                <div className="space-y-2">
-                  {data.externalLinks.map((link, index) => (
-                    <Button
-                      key={index}
-                      size='lg'
-                      variant="default"
-                      className="w-full font-semibold rounded-xl capitalize"
-                      onClick={() => handleExternalLink(link.url, link.name)}
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Copy {link.name} Link
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-    );
-  }
-
-  // User doesn't have access - show purchase options
-  return (
-      <div className="space-y-3">
-        {/* Purchase buttons */}
-        <div className="flex gap-3">
-          <Button
-            size='lg'
-            variant="outline"
-            className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-            onClick={() => {
-              if (!isInCart) {
-                addToCart(product);
-                toast.success('Added to cart!');
-              }
-            }}
-            disabled={isInCart}
-          >
-            <ShoppingCart />
-            {isInCart ? 'Added to Cart' : 'Add to Cart'}
-          </Button>
-          <Button
-            size='lg'
-            className={`flex-1 font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
-            onClick={() => {
-              if (!isInCart) {
-                addToCart(product);
-                toast.success('Added to cart!');
-              }
-            }}
+            className="flex-1 font-semibold"
           >
             <CreditCard />
             Buy Now
           </Button>
         </div>
       </div>
+    );
+  }
+
+  // No data state - show purchase options
+  if (!data) {
+    return (
+      <div className="flex gap-3">
+        <Button
+          size='lg'
+          variant="outline"
+          className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+          onClick={() => {
+            if (!isInCart) {
+              addToCart(product);
+              toast.success('Added to cart!');
+            }
+          }}
+          disabled={isInCart}
+        >
+          <ShoppingCart />
+          {isInCart ? 'Added to Cart' : 'Add to Cart'}
+        </Button>
+        <Button
+          size='lg'
+          className={`flex-1 font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+          onClick={() => {
+            if (!isInCart) {
+              addToCart(product);
+              toast.success('Added to cart!');
+            }
+          }}
+        >
+          <CreditCard />
+          Buy Now
+        </Button>
+      </div>
+    );
+  }
+
+  if (data.hasAccess || data.hasPurchased) {
+    return (
+      <div className="">
+        <div className=" rounded-lg px-3 py-2">
+          {data.purchaseDetails && (
+            <div className="flex flex-row items-center justify-center gap-1 text-[#0ED065] text-xs mt-1 text-center">
+              <DoubleTickIcon width={20} color="#0ED065" />
+              <span>You have already purchased the product</span>
+            </div>
+          )}
+        </div>
+
+        {/* Show edit button if user is the creator */}
+        {data.isCreator && (
+          <div className="space-y-2">
+            <Button
+              size='lg'
+              className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
+              onClick={handleEdit}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Product
+            </Button>
+          </div>
+        )}
+
+        {/* Show download and external links only if user is not the creator */}
+        {!data.isCreator && (
+          <>
+            {data.downloadUrls && data.downloadUrls.length > 0 && (
+              <div className="space-y-2">
+                <Button
+                  size='lg'
+                  className="w-full font-semibold"
+                  onClick={handleDownloadAll}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </div>
+            )}
+
+            {/* External Links */}
+            {data.externalLinks && data.externalLinks.length > 0 && (
+              <div className="space-y-2">
+                {data.externalLinks.map((link, index) => (
+                  <Button
+                    key={index}
+                    size='lg'
+                    variant="default"
+                    className="w-full font-semibold rounded-xl capitalize"
+                    onClick={() => handleExternalLink(link.url, link.name)}
+                  >
+                    <CopyIcon width={16} />
+                    Copy
+                      <span className='lowercase'>{link.name}</span>
+                    link
+                  </Button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // User doesn't have access - show purchase options
+  return (
+    <div className="space-y-3">
+      {/* Purchase buttons */}
+      <div className="flex gap-3">
+        <Button
+          size='lg'
+          variant="outline"
+          className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+          onClick={() => {
+            if (!isInCart) {
+              addToCart(product);
+              toast.success('Added to cart!');
+            }
+          }}
+          disabled={isInCart}
+        >
+          <ShoppingCart />
+          {isInCart ? 'Added to Cart' : 'Add to Cart'}
+        </Button>
+        <Button
+          size='lg'
+          className={`flex-1 font-semibold ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+          onClick={() => {
+            if (!isInCart) {
+              addToCart(product);
+              toast.success('Added to cart!');
+            }
+          }}
+        >
+          <CreditCard />
+          Buy Now
+        </Button>
+      </div>
+    </div>
   );
 };
 

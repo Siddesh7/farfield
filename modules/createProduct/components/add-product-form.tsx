@@ -69,8 +69,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
         }
     }, [dropdownOpen]);
 
-    console.log("Form variable",formVariables);
-
     const truncateName = (name: string, max: number = 15) => {
         if (!name) return '';
         return name.length > max ? name.slice(0, max) + '…' : name;

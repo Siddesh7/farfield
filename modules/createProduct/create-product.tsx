@@ -238,7 +238,6 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
         if (!formVariables.category) newErrors.category = "Product type is required";
         if (!formVariables.name) newErrors.name = "Product name is required";
         if (!formVariables.description) newErrors.description = "Description is required";
-        if (!formVariables.price || Number(formVariables.price) <= 0) newErrors.price = "Price must be greater than 0";
         return newErrors;
     };
 
