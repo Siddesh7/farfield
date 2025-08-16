@@ -365,7 +365,7 @@ ProductSchema.methods.recordPurchase = function (buyerFid: number) {
       fid: buyerFid,
       purchasedAt: new Date(),
     });
-    this.totalSold++;
+    this.totalSold += 1;
   }
   return this.save();
 };
