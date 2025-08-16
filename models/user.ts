@@ -18,6 +18,8 @@ export interface IUser extends Document {
     connectorType?: string;
     isPrimary?: boolean;
   }>;
+  isVerified: boolean;
+  verificationCheckedAt?: Date;
   toPublicJSON(): UserResponse;
 }
 
@@ -51,6 +53,14 @@ const UserSchema = new Schema<IUser>(
         isPrimary: { type: Boolean, default: false },
       },
     ],
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    verificationCheckedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -58,6 +68,28 @@ const UserSchema = new Schema<IUser>(
     toObject: { virtuals: true },
   }
 );
+
+// Post-save middleware to check verification status
+UserSchema.post('save', async function(doc) {
+  // Only run for new documents (when isNew was true before save)
+  if (this.isNew && !doc.verificationCheckedAt) {
+    try {
+      // Import here to avoid circular dependencies
+      const { checkAndUpdateUserVerification } = await import('@/lib/neynar');
+      
+      // Run async without blocking
+      setImmediate(async () => {
+        try {
+          await checkAndUpdateUserVerification(doc.farcasterFid);
+        } catch (error) {
+          console.error(`Failed to check verification for user ${doc.farcasterFid}:`, error);
+        }
+      });
+    } catch (error) {
+      console.error('Error importing neynar verification utility:', error);
+    }
+  }
+});
 
 // Methods
 UserSchema.methods.toPublicJSON = function () {
