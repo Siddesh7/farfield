@@ -4,27 +4,30 @@ export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
 
   const manifest = {
-    // Note: You'll need to generate proper accountAssociation values when deploying
-    // For now, using placeholder values for development
     accountAssociation: {
       header: "placeholder_header",
       payload: "placeholder_payload",
       signature: "placeholder_signature",
     },
-    frame: {
-      version: "1",
+    miniapp: {
       name: "Farfield",
-      iconUrl: `${appUrl}/api/og`,
-      homeUrl: appUrl,
-      imageUrl: `${appUrl}/api/og`,
-      buttonTitle: "Open Farfield",
-      splashImageUrl: `${appUrl}/api/og`,
+      url: appUrl,
+      description:
+        "Buy and sell digital products from fellow Farcaster users in a crypto-native marketplace built for the community.",
+      imageUrl: `${appUrl}/og.png`,
+      version: "next",
+      primaryCategory: "social",
+      tags: ["social", "warpcast", "community", "friends", "compatibility"],
+      heroImageUrl: `${appUrl}/api/og`,
+      tagline: "Farcaster compatibility",
+      ogTitle: "Farfield",
+      iconUrl: `${appUrl}/logo.png`,
+      splashImageUrl: `${appUrl}/og.png`,
+      webhookUrl: `${appUrl}/webhookurl`,
       splashBackgroundColor: "#ffffff",
-      // Optional fields for when you publish
-      subtitle: "A Farcaster Mini App",
-      description: "Connect your wallet and explore the Farcaster ecosystem",
-      primaryCategory: "productivity",
-      tags: ["farcaster", "wallet", "crypto"],
+      homeUrl: appUrl,
+      subtitle:
+        "Buy and sell digital products from fellow Farcaster users in a crypto-native marketplace built for the community.",
     },
   };
 
