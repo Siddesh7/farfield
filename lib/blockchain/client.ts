@@ -8,7 +8,7 @@ import {
 } from "viem";
 import { baseSepolia } from "viem/chains";
 import {
-  BASE_SEPOLIA_RPC_URL,
+  BASE_RPC_URL,
   FARFIELD_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   FARFIELD_ABI,
@@ -18,7 +18,7 @@ import {
 // Public client for reading blockchain data
 export const publicClient = createPublicClient({
   chain: baseSepolia,
-  transport: http(BASE_SEPOLIA_RPC_URL),
+  transport: http(BASE_RPC_URL),
 });
 
 // Utility functions for USDC conversions
