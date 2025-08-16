@@ -45,7 +45,7 @@ export const farfieldContract = {
   async calculatePurchaseCost(productPrices: bigint[]) {
     try {
       const result = await publicClient.readContract({
-        address: FARFIELD_CONTRACT_ADDRESS,
+        address: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         abi: FARFIELD_ABI,
         functionName: "calculatePurchaseCost",
         args: [productPrices],
