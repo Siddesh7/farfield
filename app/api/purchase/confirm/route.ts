@@ -9,6 +9,7 @@ import {
   HTTP_STATUS,
 } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { Product } from "@/models/product";
 
 interface ConfirmPurchaseRequest {
   purchaseId: string;
@@ -128,6 +129,16 @@ async function confirmPurchaseHandler(
   }
   // Mark purchase as completed
   await purchase.markCompleted(body.transactionHash);
+  
+  // Update totalSold for each purchased product
+  for (const item of purchase.items) {
+    await Product.findByIdAndUpdate(
+      item.productId,
+      { $inc: { totalSold: 1 } },
+      { new: true }
+    );
+  }
+  
   // Prepare response
   const responseData = {
     purchaseId: body.purchaseId,
