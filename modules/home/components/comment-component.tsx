@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Product } from '@/lib/types/product';
 import { SendHorizontal } from 'lucide-react';
@@ -7,7 +7,20 @@ import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatTimeAgo } from '@/lib/utils';
 import { DoubleTickIcon } from '@/components/icons';
-import { useAddProductComment, useGetProductComments } from '@/query/use-comment';
+import { useAddProductComment, useGetProductComments } from '@/query';
+
+const CommentSkeleton = () => (
+    <div className='flex justify-between'>
+        <div className='flex flex-col gap-1 w-full'>
+            <div className='flex gap-1 items-center'>
+                <Skeleton className='w-5 h-5 rounded-xs' />
+                <Skeleton className='h-4 w-24' />
+                <Skeleton className='h-3 w-16 ml-2' />
+            </div>
+            <Skeleton className='h-4 w-full max-w-xs' />
+        </div>
+    </div>
+);
 
 const CommentComponent = ({
     product,
@@ -65,7 +78,11 @@ const CommentComponent = ({
             </form>
 
             {isLoading ? (
-                <div className="flex justify-center py-8"><LoadingSpinner /></div>
+                <div className='flex flex-col gap-4 max-h-96 overflow-y-auto pr-2 pt-2'>
+                    {Array.from({ length: 3 }).map((_, index) => (
+                        <CommentSkeleton key={index} />
+                    ))}
+                </div>
             ) : error ? (
                 toast.error(error instanceof Error ? error.message : 'Failed to load comments') || null
             ) : (

@@ -175,7 +175,7 @@ const CartPage = () => {
     return (
         <BoxContainer className='relative flex flex-1 flex-col pt-22 px-5.5'>
             <div className="pt-4.5 flex flex-col flex-1 gap-4 pb-28">
-                <p className='font-awesome text-2xl'>Your Cart</p>
+               {cart.length !== 0 && <p className='font-awesome text-2xl'>Your Cart</p>}
                 <ScrollArea className="rounded-md flex-1 min-h-0 overflow-y-auto pr-3">
                     <div className="flex flex-col pt-4">
                         {cart.length === 0 ? (

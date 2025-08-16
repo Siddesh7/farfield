@@ -7,3 +7,6 @@ export { default as SuccessIcon } from "./components/success-icon";
 export { default as StarIcon } from "./components/star-icon";
 export { default as DoubleTickIcon } from "./components/double-tick-icon";
 export {default as NotificationIcon } from "./components/notification-icon";
+export {default as EditIcon } from "./components/edit-icon";
+export {default as ArrowRightUpIcon } from "./components/arrow-right-up-icon";
+export {default as CopyIcon } from "./components/copy-icon";
