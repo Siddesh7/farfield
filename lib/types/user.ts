@@ -18,6 +18,8 @@ export interface UserResponse {
     connectorType?: string;
     isPrimary?: boolean;
   }>;
+  isVerified: boolean;
+  verificationCheckedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

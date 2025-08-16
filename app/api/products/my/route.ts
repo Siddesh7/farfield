@@ -110,6 +110,7 @@ async function getMyProductsHandler(
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
+        isVerified: u.isVerified,
       },
     ])
   );
@@ -163,6 +164,7 @@ async function getMyProductsHandler(
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
+        isVerified: u.isVerified,
       },
     ])
   );

@@ -152,7 +152,7 @@ async function getProductsHandler(request: Request) {
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
-        // isVerified: u.isVerified,
+        isVerified: u.isVerified,
       },
     ])
   );
@@ -191,7 +191,7 @@ async function getProductsHandler(request: Request) {
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
-        // isVerified: u.isVerified,
+        isVerified: u.isVerified,
       },
     ])
   );
@@ -245,7 +245,7 @@ async function getProductsHandler(request: Request) {
         name: u.farcaster.displayName,
         username: u.farcaster.username,
         pfp: u.farcaster.pfp || null,
-        // isVerified: u.isVerified,
+        isVerified: u.isVerified,
       },
     ])
   );
