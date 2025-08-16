@@ -1,16 +1,39 @@
-import { EditIcon } from "@/components/icons"
 import { BASE_URL } from "@/config"
 import { Product } from "@/lib/types/product"
 import { toast } from "sonner"
+import { useState } from "react"
+import { Trash2 } from "lucide-react"
+import { useDeleteProduct } from "@/query/use-delete-product"
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogDescription, 
+    DialogFooter, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogTrigger 
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 const ListedProductItem = ({
     product
 }: {
     product: Product
 }) => {
-    // Handle edit product
-    const handleEdit = () => {
-        toast.info('Edit functionality coming soon!');
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const deleteProductMutation = useDeleteProduct();
+
+    // Handle delete product
+    const handleDeleteConfirm = () => {
+        deleteProductMutation.mutate(product.id, {
+            onSuccess: () => {
+                setIsDialogOpen(false);
+                toast.success("Product deleted successfully");
+            },
+            onError: (error) => {
+                toast.error(error.message || "Failed to delete product");
+            }
+        });
     };
 
     return (
@@ -33,12 +56,41 @@ const ListedProductItem = ({
             </div>
             <div className="flex flex-row gap-3 items-center">
                 <p className='text-lg font-medium'>${product.price}</p>
-                <button 
-                    className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#0000001A] transition-colors cursor-pointer"
-                    onClick={handleEdit}
-                >
-                    <EditIcon width={16} />
-                </button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <button 
+                            className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#ff000020] hover:border-red-200 transition-colors cursor-pointer"
+                        >
+                            <Trash2 width={16} className="text-red-600" />
+                        </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Delete Product</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete "{product.name}"? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="gap-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setIsDialogOpen(false)}
+                                disabled={deleteProductMutation.isPending}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={handleDeleteConfirm}
+                                disabled={deleteProductMutation.isPending}
+                            >
+                                {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     )

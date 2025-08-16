@@ -16,8 +16,6 @@ const ProductComponent = ({
 
     const [showFullDescription, setShowFullDescription] = useState(false);
 
-    console.log("Product >>>",product);
-
     return (
         <>
             <div className='relative w-[-webkit-fill-available] h-[275px]'>

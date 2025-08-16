@@ -15,7 +15,7 @@ const CartListItem = ({
     return (
         <div className='py-5 border-b flex justify-between'>
             <div className='flex gap-3'>
-                <div className='relative w-[-webkit-fill-available] h-[84px] max-w-[84px]'>
+                <div className='relative w-[-webkit-fill-available] h-[84px] w-[84px]'>
                     <img
                         src={`${BASE_URL}/api/images/${product.images[0]}`}
                         alt={product.name}

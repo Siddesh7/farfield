@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Skeleton } from '@/components/ui';
-import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard, Edit } from 'lucide-react';
+import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard, Trash2 } from 'lucide-react';
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
 import { toast } from "sonner";
 import { CopyIcon, DoubleTickIcon } from '@/components/icons';
 import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
 import { useProductAccess } from '@/query/use-product-access';
+import { useDeleteProduct } from '@/query/use-delete-product';
 import JSZip from 'jszip';
 
 interface ProductAccessComponentProps {
@@ -15,9 +16,11 @@ interface ProductAccessComponentProps {
 
 const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product }) => {
   const { data, isLoading, error } = useProductAccess(product.id);
-  const { addToCart, cart } = useGlobalContext();
+  const { addToCart, cart, setActiveModule, setSelectedProduct } = useGlobalContext();
   const isInCart = cart.some((p) => p.id === product.id);
   const { authenticatedFetch } = useAuthenticatedFetch();
+  const deleteProductMutation = useDeleteProduct();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Handle download functionality
   const handleDownload = async (url: string, fileName: string) => {
@@ -87,10 +90,23 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     });
   };
 
-  // Handle edit product
-  const handleEdit = () => {
-    // TODO: Navigate to edit product page
-    toast.info('Edit functionality coming soon!');
+  // Handle delete product
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    deleteProductMutation.mutate(product.id, {
+      onSuccess: () => {
+        setShowDeleteConfirm(false);
+        setSelectedProduct(null);
+        setActiveModule('home');
+      },
+    });
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(false);
   };
 
   // Loading state
@@ -182,17 +198,47 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
           )}
         </div>
 
-        {/* Show edit button if user is the creator */}
+        {/* Show delete button if user is the creator */}
         {data.isCreator && (
           <div className="space-y-2">
-            <Button
-              size='lg'
-              className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
-              onClick={handleEdit}
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Product
-            </Button>
+            {!showDeleteConfirm ? (
+              <Button
+                size='lg'
+                variant="destructive"
+                className="w-full font-semibold"
+                onClick={handleDeleteClick}
+                disabled={deleteProductMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete/Remove Product
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-center text-sm text-red-600 font-medium">
+                  Are you sure you want to delete this product? This action cannot be undone.
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size='sm'
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleDeleteCancel}
+                    disabled={deleteProductMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size='sm'
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteProductMutation.isPending}
+                  >
+                    {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
