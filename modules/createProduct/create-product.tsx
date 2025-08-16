@@ -32,10 +32,11 @@ const defaultFormVariables: CreateProductFormVariables = {
 const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void }) => {
 
     const { post } = useAuthenticatedAPI();
-    const { setActiveModule } = useGlobalContext();
+    const { setActiveModule, setSelectedProduct } = useGlobalContext();
     const [open, setOpen] = useState(false);
 
     const [productId, setProductId] = useState<string | null>(null);
+    const [createdProduct, setCreatedProduct] = useState<any | null>(null);
     const [formVariables, setFormVariables] = useState<CreateProductFormVariables>(defaultFormVariables);
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -194,7 +195,7 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                     previewFiles,
                 };
 
-            const res = await post("/api/products", payload);
+            const res = await post("/api/products?publish=true", payload);
             if (!res.success) {
                 toast.error(res.error);
                 setStep('idle');
@@ -202,13 +203,10 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 return;
             }
             const data = res.data;
-            const newProductId = data.id;
 
-            // Step 2: Publish Product
-            setStep('publishing');
-            const publishRes = await post(`/api/products/${newProductId}/publish`, { published: true });
-            if (publishRes.success) {
-                toast.success(publishRes.message);
+            setCreatedProduct(data);
+            if(data){
+                toast.success(res.message);
                 refetchAllProducts();
                 setOpen(true);
                 setProductId(null);
@@ -222,8 +220,9 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 if (productFilesInputRef.current) productFilesInputRef.current.value = '';
 
             } else {
-                toast.error(publishRes.error);
+                toast.error(res.error);
             }
+
         } catch (error: any) {
             console.log("Error in creating and publishing product", error);
             toast.error(error.message);
@@ -251,8 +250,16 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     };
 
     const handleModalClose = () => {
-        // Redirect to home page (products page) when modal is closed
-        setActiveModule('home');
+        
+        if (createdProduct) {
+            setSelectedProduct(createdProduct);
+            setActiveModule('home');
+            
+            setCreatedProduct(null);
+        } else {
+           
+            setActiveModule('home');
+        }
     };
 
     return (

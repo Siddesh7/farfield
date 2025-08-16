@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/ui';
+import { Button, Skeleton } from '@/components/ui';
 import { CirclePlus, Download, ExternalLink, ShoppingCart, CreditCard, Edit } from 'lucide-react';
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
@@ -96,9 +96,11 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-4 pb-0">
-        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
-        <span className="ml-2">Checking access...</span>
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <Skeleton className="flex-1 h-12 rounded-lg" />
+          <Skeleton className="flex-1 h-12 rounded-lg" />
+        </div>
       </div>
     );
   }

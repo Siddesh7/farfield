@@ -230,7 +230,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                     size="sm"
                                     variant="ghost"
                                     className="text-red-500 px-2 py-0 h-6"
-                                     onClick={onRemovePreviewFile}
+                                    onClick={onRemovePreviewFile}
                                 >
                                     Remove
                                 </Button>
@@ -285,14 +285,16 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             <div className="text-xs mt-2">
                                 {formVariables.productFiles.map((file, idx) => (
                                     <div key={idx} className="flex items-center justify-between">
-                                        <Files />
-                                        <span title={file.name}>{truncateName(file.name, 15)} ({(file.size / 1024 < 1024 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / (1024 * 1024)).toFixed(2) + ' MB')})</span>
+                                        <div className='flex gap-2 items-center'>
+                                            <Files />
+                                            <span title={file.name}>{truncateName(file.name, 15)} ({(file.size / 1024 < 1024 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / (1024 * 1024)).toFixed(2) + ' MB')})</span>
+                                        </div>
                                         <Button
                                             type="button"
                                             size="sm"
                                             variant="ghost"
                                             className="text-red-500 px-2 py-0 h-6"
-                                             onClick={() => onRemoveProductFile(idx)}
+                                            onClick={() => onRemoveProductFile(idx)}
                                         >
                                             Remove
                                         </Button>

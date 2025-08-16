@@ -72,11 +72,11 @@ const ProfilePage: FC<ProfilePageProps> = ({ listedProducts, purchasedproducts, 
                   </div>
                 ) : (
                   <div>
-                    <Tabs defaultValue="boughtProducts">
+                    <Tabs defaultValue="listedProducts">
                       <TabsList className="font-awesome w-full border-b-1 border-[#0000001F]">
                         <div className="px-4.5 flex justify-between w-full">
-                          <TabsTrigger value="boughtProducts" className="text-lg">Products Bought</TabsTrigger>
                           <TabsTrigger value="listedProducts" className="text-lg">Listed Product</TabsTrigger>
+                          <TabsTrigger value="boughtProducts" className="text-lg">Products Bought</TabsTrigger>
                         </div>
                       </TabsList>
                       <TabsContent value="listedProducts">

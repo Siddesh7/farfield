@@ -53,7 +53,7 @@ export function useGetPurchasedProducts({
                     limit: String(limit),
                 });
                 if (status) params.append("status", status);
-                const res = await get(`/api/purchase/history?${params.toString()}?status=completed`);
+                const res = await get(`/api/purchase/history?${params.toString()}&status=completed`);
                 if (!res.success) {
                     throw new Error(res.error || res.message || "Failed to fetch purchased products");
                 }

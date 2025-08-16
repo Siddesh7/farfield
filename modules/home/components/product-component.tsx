@@ -16,6 +16,8 @@ const ProductComponent = ({
 
     const [showFullDescription, setShowFullDescription] = useState(false);
 
+    console.log("Product >>>",product);
+
     return (
         <>
             <div className='relative w-[-webkit-fill-available] h-[275px]'>
@@ -104,7 +106,7 @@ const ProductComponent = ({
                 </div>
             </div>
 
-            <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gray-200/60 px-4 py-4">
+            <div className="fixed left-0 bottom-17 w-full backdrop-blur-3xl bg-gradient-to-t from-gray-300/95 to-transparent px-4 py-4">
                 <ProductAccessComponent product={product} />
             </div>
         </>
