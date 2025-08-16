@@ -26,8 +26,7 @@ export async function GET() {
       webhookUrl: `${appUrl}/webhookurl`,
       splashBackgroundColor: "#ffffff",
       homeUrl: appUrl,
-      subtitle:
-        "Buy and sell digital products from fellow Farcaster users in a crypto-native marketplace built for the community.",
+      subtitle: "the social store",
     },
   };
 
