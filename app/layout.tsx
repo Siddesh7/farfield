@@ -26,7 +26,7 @@ const appUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Farfield - crypto-native marketplace for Farcaster",
+  title: "Farfield - the social store",
   description:
     "Buy and sell digital products from fellow Farcaster users in a crypto-native marketplace built for the community.",
   keywords: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     "creator economy",
   ],
   openGraph: {
-    title: "Farfield - crypto-native marketplace",
+    title: "the social store",
     description:
       "Buy and sell digital products from fellow Farcaster users. A crypto-native marketplace built for the community.",
     images: [`${appUrl}/api/og`],
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Farfield - crypto-native marketplace",
+    title: "the social store",
     description:
       "Buy and sell digital products from fellow Farcaster users. A crypto-native marketplace built for the community.",
     images: [`${appUrl}/api/og`],
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
         title: "Explore Marketplace 🚀",
         action: {
           type: "launch_frame",
-          name: "Farfield - crypto-native marketplace",
+          name: "the social store",
           url: appUrl,
           splashImageUrl: `${appUrl}/og.png`,
           splashBackgroundColor: "#7c3aed", // Farcaster purple
