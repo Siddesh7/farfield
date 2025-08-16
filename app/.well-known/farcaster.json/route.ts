@@ -5,9 +5,11 @@ export async function GET() {
 
   const manifest = {
     accountAssociation: {
-      header: "placeholder_header",
-      payload: "placeholder_payload",
-      signature: "placeholder_signature",
+      header:
+        "eyJmaWQiOjI1MjcyMCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDlCOThkMTQ1Y0E5NWYwNGI1YTkzNTVGNDExMDFiODk4RjQ5NUU0OGQifQ",
+      payload: "eyJkb21haW4iOiJmYXJmaWVsZC5zaG9wIn0",
+      signature:
+        "MHhlZjFmOTU2MjZkZTRhNDYwNTNiOTE2MDk4OGNhNDM4MmRiZDA2ZTlmMTdiNTU4N2NkODE3YjgyNzY1MTkyMzlhMDVmMDkwY2Q3NTc0YTAxZDBlY2RkMzk5ODBlMzhlYjIzZTc3NDVlNTA0MGFhOTdlM2ZhNDQxMzBmYzQ0NWI1MTFi",
     },
     miniapp: {
       name: "Farfield",
