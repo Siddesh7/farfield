@@ -1,4 +1,5 @@
 import { User } from "@/models/user";
+import { Product } from "@/models/product";
 import connectDB from "@/lib/db/connect";
 import {
   ApiResponseBuilder,
@@ -24,8 +25,17 @@ async function getMeHandler(
     return ApiResponseBuilder.notFound(API_MESSAGES.USER_NOT_FOUND);
   }
 
+  // Calculate total earned from user's products
+  const userProducts = await Product.find({ creatorFid: user.farcasterFid });
+  const totalEarned = userProducts.reduce((total, product) => {
+    return total + (product.price * product.totalSold);
+  }, 0);
+
   // Convert to public response (removes sensitive data)
-  const userResponse: UserResponse = user.toPublicJSON();
+  const userResponse: UserResponse = {
+    ...user.toPublicJSON(),
+    totalEarned
+  };
 
   return ApiResponseBuilder.success(
     userResponse,

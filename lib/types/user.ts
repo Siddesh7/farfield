@@ -1,4 +1,5 @@
 import { IUser } from "@/models/user";
+import { Product } from "@/models/product";
 
 // User API Response Types
 export interface UserResponse {
@@ -22,6 +23,7 @@ export interface UserResponse {
   verificationCheckedAt?: string;
   createdAt: string;
   updatedAt: string;
+  totalEarned: number;
 }
 
 export interface PublicUserResponse extends Omit<UserResponse, "wallets"> {
