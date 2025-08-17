@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     title: "the social store",
     description:
       "Buy and sell digital products from fellow Farcaster users. A crypto-native marketplace built for the community.",
-    images: [`${appUrl}/api/og`],
+    images: [`${appUrl}/og.png`],
     siteName: "Farfield",
     type: "website",
   },
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
           type: "launch_frame",
           name: "the social store",
           url: appUrl,
-          splashImageUrl: `${appUrl}/og.png`,
+          splashImageUrl: `${appUrl}/splash.png`,
           splashBackgroundColor: "#7c3aed", // Farcaster purple
         },
       },

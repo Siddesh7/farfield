@@ -24,7 +24,7 @@ export async function GET() {
       tagline: "the social store",
       ogTitle: "Farfield",
       iconUrl: `${appUrl}/logo.png`,
-      splashImageUrl: `${appUrl}/og.png`,
+      splashImageUrl: `${appUrl}/splash.png`,
       webhookUrl: `${appUrl}/webhookurl`,
       splashBackgroundColor: "#ffffff",
       homeUrl: appUrl,
