@@ -5,8 +5,9 @@ import {
   WalletSyncStatus,
 } from "@/components/common";
 import { LoadingSpinner, LoadingState } from "@/components/ui/loading-spinner";
-import { useUserProfileApi } from "@/lib/hooks/use-api-state";
-import { FC, useEffect, useRef } from "react";
+import { Skeleton, Button } from "@/components/ui";
+import { useUserProfile } from "@/query";
+import { FC } from "react";
 import { Package, WalletMinimal } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Product } from "@/lib/types/product";
@@ -14,6 +15,7 @@ import { PurchaseHistoryItem } from "@/query";
 import ProfileComponent from "./components/profile-component";
 import ListedProducts from "./components/listed-products";
 import BoughtProducts from "./components/bought-products";
+import { toast } from "sonner";
 
 type ProfilePageProps = {
   listedProducts: Product[] | undefined;
@@ -23,27 +25,11 @@ type ProfilePageProps = {
 
 const ProfilePage: FC<ProfilePageProps> = ({ listedProducts, purchasedproducts, loading }) => {
   const { ready, authenticated, user } = usePrivy();
+  const { data: profile, isLoading: profileLoading, error: profileError } = useUserProfile();
 
-  const { profile, profileLoading, profileError, fetchProfile } =
-    useUserProfileApi();
-
-  // Track if we've already fetched the profile to prevent infinite loops
-  const hasFetchedRef = useRef(false);
-
-  // Fetch profile data when component mounts
-  useEffect(() => {
-    if (authenticated && ready && !hasFetchedRef.current) {
-      hasFetchedRef.current = true;
-      fetchProfile();
-    }
-  }, [authenticated, ready]); // Removed fetchProfile from dependencies
-
-  // Reset the fetch flag when user logs out
-  useEffect(() => {
-    if (!authenticated) {
-      hasFetchedRef.current = false;
-    }
-  }, [authenticated]);
+  const handleClaimAmount = () => {
+    toast.info("Claim feature will be available in the next version!");
+  };
 
   return (
     <>
@@ -54,15 +40,29 @@ const ProfilePage: FC<ProfilePageProps> = ({ listedProducts, purchasedproducts, 
               <div className="flex flex-col gap-4.5">
                 <ProfileComponent user={user} />
                 <div className="flex gap-3 justify-center">
-                  <div className="px-7 py-3 bg-fade-background rounded-lg flex gap-2 items-center">
-                    <WalletMinimal size={16} />
-                    <span className="text-[#02B151] font-inter">+$1,234</span>
-                  </div>
-                  <div className="px-7 py-3 bg-fade-background rounded-lg flex gap-2 items-center ">
-                    <Package size={16} />
-                    <span className="font-inter">{listedProducts?.length || 0} Created</span>
+                  <div className="flex gap-3 p-2.5 justify-center bg-fade-background rounded-lg">
+
+                    <div className="flex flex-col">
+                      <h3>{(listedProducts?.length || 0) > 0 ? 'Amount earned' : 'Start selling and earn'}</h3>
+                      <span className="text-[#02B151] font-inter">
+                        {profileLoading ? (
+                          <Skeleton className="h-4 w-16" />
+                        ) : (
+                          `+$${profile?.totalEarned?.toFixed(2) || '0.00'}`
+                        )}
+                      </span>
+                    </div>
+
+                    <Button 
+                      disabled={(listedProducts?.length || 0) === 0}
+                      onClick={handleClaimAmount}
+                    >
+                      Claim Amount
+                    </Button>
                   </div>
                 </div>
+
+
               </div>
               <>
                 {loading || !listedProducts || !purchasedproducts ? (
@@ -72,11 +72,11 @@ const ProfilePage: FC<ProfilePageProps> = ({ listedProducts, purchasedproducts, 
                   </div>
                 ) : (
                   <div>
-                    <Tabs defaultValue="listedProducts">
+                    <Tabs defaultValue="boughtProducts">
                       <TabsList className="font-awesome w-full border-b-1 border-[#0000001F]">
                         <div className="px-4.5 flex justify-between w-full">
-                          <TabsTrigger value="listedProducts" className="text-lg">Listed Product</TabsTrigger>
                           <TabsTrigger value="boughtProducts" className="text-lg">Products Bought</TabsTrigger>
+                          <TabsTrigger value="listedProducts" className="text-lg">Listed Product</TabsTrigger>
                         </div>
                       </TabsList>
                       <TabsContent value="listedProducts">

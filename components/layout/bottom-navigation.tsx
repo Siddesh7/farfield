@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { sdk } from '@farcaster/frame-sdk';
 
 const BottomNavigation = () => {
-  const { activeModule, setActiveModule } = useGlobalContext();
+  const { activeModule, setActiveModule,selectedProduct,setSelectedProduct } = useGlobalContext();
 
   const handleModuleClick = useCallback(
     (module: ModulesType) => {
@@ -42,7 +42,12 @@ const BottomNavigation = () => {
       <HomeIcon
         width={28}
         isActive={activeModule === "home"}
-        onClick={() => handleModuleClick("home")}
+        onClick={() => {
+          if(selectedProduct){
+            setSelectedProduct(null)
+          }
+          handleModuleClick("home")
+        }}
       />
       <ShoppingIcon
         width={28}

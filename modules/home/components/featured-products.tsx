@@ -45,7 +45,7 @@ const FeaturedProducts = ({
                         
                         <div className="flex-shrink-0 text-right">
                             <span className="text-sm font-bold">
-                                ${product.price}
+                                {product.price === 0 ? 'Free' : `$${product.price}`}
                             </span>
                         </div>
                     </div>

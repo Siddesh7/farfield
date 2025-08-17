@@ -28,7 +28,9 @@ const CartListItem = ({
                         {product.name.split(' ').slice(0, 7).join(' ')}
                         {product.name.split(' ').length > 7 ? '...' : ''}
                     </p>
-                    <p className='text-sm '>${product.price}</p>
+                    <p className='text-sm '>
+                        {product.price === 0 ? 'Free' : `$${product.price}`}
+                    </p>
 
                 </div>
             </div>

@@ -19,12 +19,9 @@ const defaultFormVariables: CreateProductFormVariables = {
     images: [],
     digitalFiles: [],
     externalLinks: [],
-    previewFiles: [],
     tags: '',
     fileFormat: '',
     coverImageFile: null,
-    togglePreviewImage: false,
-    previewFile: null,
     productFiles: [],
     productLink: '',
 };
@@ -47,95 +44,93 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [coverImageURL, setCoverImageURL] = useState<string | null>(null);
     const [coverError, setCoverError] = useState<string | null>(null);
-
-    // Preview Image/pdf
-    const previewFileInputRef = useRef<HTMLInputElement | null>(null);
+    const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
 
     // for product file
     const productFilesInputRef = useRef<HTMLInputElement | null>(null);
+    const [uploadingProductFile, setUploadingProductFile] = useState(false);
 
 
     const handleFormVariableChange = (name: keyof CreateProductFormVariables, value: string | boolean | null) => {
-        setFormVariables(prev => ({ ...prev, [name]: value }));
+        setFormVariables(prev => ({ 
+            ...prev, 
+            [name]: name === 'price' ? (value === '' ? 0 : Number(value)) : value 
+        }));
     };
 
     // Cover image file handler
     const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        
         if (file.size > 5 * 1024 * 1024) {
-            setCoverError("Image must be less than 5MB");
+            toast.error("Image must be less than 5MB");
             return;
         }
+        
+        setUploadingCoverImage(true);
+        setCoverError(null);
+        
         const img = new window.Image();
         const reader = new FileReader();
+        
         reader.onload = async (ev) => {
             const target = ev.target as FileReader | null;
             if (target && typeof target.result === 'string') {
                 img.src = target.result;
-                img.onload = () => {
-                    setCoverError(null);
+                img.onload = async () => {
                     setCoverImageURL(target.result as string);
-                };
-                try {
-                    const res = await uploadFile(file);
-                    if (res && res.fileKey) {
-                        setFormVariables(prev => ({ ...prev, images: [res.fileKey], coverImageFile: file }));
+                    
+                    try {
+                        const res = await uploadFile(file);
+                        if (res && res.fileKey) {
+                            setFormVariables(prev => ({ ...prev, images: [res.fileKey], coverImageFile: file }));
+                            toast.success("Cover image uploaded successfully");
+                        }
+                    } catch (err: any) {
+                        toast.error(err.message || "Failed to upload cover image");
+                        setCoverImageURL(null);
+                    } finally {
+                        setUploadingCoverImage(false);
                     }
-                } catch (err: any) {
-                    toast.error(err.message || "Failed to upload cover image");
-                }
+                };
             }
         };
         reader.readAsDataURL(file);
     };
 
-    // Preview file handler
-    const handlePreviewFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+
+    // Product files handler (multiple)
+    const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        
+        setUploadingProductFile(true);
+        
         try {
             const res = await uploadFile(file);
             if (res && res.fileKey && res.size && res.originalName) {
                 setFormVariables(prev => ({
                     ...prev,
-                    previewFiles: [{
-                        fileName: res.originalName,
-                        fileUrl: res.fileKey,
-                        fileSize: res.size,
-                    }],
-                    previewFile: file,
+                    digitalFiles: [
+                        ...(prev.digitalFiles || []),
+                        {
+                            fileName: res.originalName,
+                            fileUrl: res.fileKey,
+                            fileSize: res.size,
+                        },
+                    ],
+                    productFiles: [...(prev.productFiles || []), file],
                 }));
+                toast.success(`${res.originalName} uploaded successfully`);
             }
         } catch (error: any) {
-            toast.error(error.message || "Failed to upload preview file");
+            toast.error(error.message || "Failed to upload product file");
+        } finally {
+            setUploadingProductFile(false);
         }
-    };
-
-    // Product files handler (multiple)
-    const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            try {
-                const res = await uploadFile(file);
-                if (res && res.fileKey && res.size && res.originalName) {
-                    setFormVariables(prev => ({
-                        ...prev,
-                        digitalFiles: [
-                            ...(prev.digitalFiles || []),
-                            {
-                                fileName: res.originalName,
-                                fileUrl: res.fileKey,
-                                fileSize: res.size,
-                            },
-                        ],
-                        productFiles: [...(prev.productFiles || []), file],
-                    }));
-                }
-            } catch (error: any) {
-                toast.error(error.message || "Failed to upload product file");
-            }
-        }
+        
         e.target.value = '';
     };
 
@@ -173,9 +168,6 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
 
             const images: string[] = Array.isArray(formVariables.images) ? formVariables.images : [];
 
-            const previewFiles: { fileName: string; fileUrl: string; fileSize: number; }[] =
-                formVariables.togglePreviewImage ? (formVariables.previewFiles || []) : [];
-
             const digitalFiles: { fileName: string; fileUrl: string; fileSize: number; }[] =
                 !formVariables.hasExternalLinks ? (formVariables.digitalFiles || []) : [];
 
@@ -184,15 +176,13 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                     ...basePayload,
                     images,
                     digitalFiles: undefined,
-                    externalLinks: formVariables.externalLinks,
-                    previewFiles
+                    externalLinks: formVariables.externalLinks
                 }
                 : {
                     ...basePayload,
                     images,
                     externalLinks: undefined,
                     digitalFiles,
-                    previewFiles,
                 };
 
             const res = await post("/api/products?publish=true", payload);
@@ -216,7 +206,6 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 setCoverImageURL(null);
                 setCoverError(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
-                if (previewFileInputRef.current) previewFileInputRef.current.value = '';
                 if (productFilesInputRef.current) productFilesInputRef.current.value = '';
 
             } else {
@@ -250,14 +239,11 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     };
 
     const handleModalClose = () => {
-        
         if (createdProduct) {
             setSelectedProduct(createdProduct);
             setActiveModule('home');
-            
             setCreatedProduct(null);
         } else {
-           
             setActiveModule('home');
         }
     };
@@ -273,19 +259,15 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 coverImageURL={coverImageURL}
                 setCoverImageURL={setCoverImageURL}
                 handleImageChange={handleCoverImageChange}
-                previewFileInputRef={previewFileInputRef}
-                handlePreviewFileChange={handlePreviewFileChange}
                 productFilesInputRef={productFilesInputRef}
                 handleProductFilesChange={handleProductFilesChange}
                 handleProductLinkChange={handleProductLinkChange}
+                uploadingCoverImage={uploadingCoverImage}
+                uploadingProductFile={uploadingProductFile}
                 onRemoveCoverImage={() => {
                     setCoverImageURL(null);
                     setFormVariables(prev => ({ ...prev, images: [], coverImageFile: null }));
                     if (fileInputRef.current) fileInputRef.current.value = '';
-                }}
-                onRemovePreviewFile={() => {
-                    setFormVariables(prev => ({ ...prev, previewFile: null, previewFiles: [] }));
-                    if (previewFileInputRef.current) previewFileInputRef.current.value = '';
                 }}
                 onRemoveProductFile={(idx: number) => {
                     setFormVariables(prev => ({

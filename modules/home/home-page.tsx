@@ -10,12 +10,16 @@ type HomePageProps = {
     isLoading: boolean;
     products: Product[];
     setCategory: (category: string) => void;
+    loadNextPage: () => void;
+    loadingMore: boolean;
 };
 
 const HomePage: FC<HomePageProps> = ({
     isLoading,
     products,
-    setCategory
+    setCategory,
+    loadNextPage,
+    loadingMore
 }) => {
     const { selectedProduct } = useGlobalContext();
 
@@ -30,6 +34,8 @@ const HomePage: FC<HomePageProps> = ({
                     setCategory={setCategory}
                     ProductTypes={PRODUCT_TYPES}
                     isLoading={isLoading}
+                    loadNextPage={loadNextPage}
+                    loadingMore={loadingMore}
                 />
             )}
         </BoxContainer>

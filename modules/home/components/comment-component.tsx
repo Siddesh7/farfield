@@ -88,7 +88,7 @@ const CommentComponent = ({
             ) : (
                 <div className='flex flex-col gap-4 max-h-96 overflow-y-auto pr-2 pt-2'>
                     {!data || data.length === 0 ? (
-                        <div className="text-center text-gray-400 py-8">No comments yet.</div>
+                        <div className="text-center text-gray-400">No comments yet.</div>
                     ) : data.map((commentItem) => {
                         const isBuyer = product.buyers?.some(buyer => buyer.fid === commentItem.commentorFid) || false;
                         return (

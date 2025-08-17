@@ -55,7 +55,9 @@ const ListedProductItem = ({
                 </div>
             </div>
             <div className="flex flex-row gap-3 items-center">
-                <p className='text-lg font-medium'>${product.price}</p>
+                <p className='text-lg font-medium'>
+                    {product.price === 0 ? 'Free' : `$${product.price}`}
+                </p>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <button 

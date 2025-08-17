@@ -6,17 +6,20 @@ import { CartListItem } from './components/cart-list-item';
 import { useGlobalContext } from '@/context/global-context';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
+import { usePurchaseConfirm } from '@/query';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS } from '@/lib/blockchain';
 import { Check } from 'lucide-react';
 import { WalletIcon, FileIcon, SwapIcon } from '@/components/icons';
+import { wagmiConfig } from '@/config';
 
 const CartPage = () => {
     const { cart, removeFromCart, setActiveModule } = useGlobalContext();
     const { address, isConnected } = useAccount();
     const { post } = useAuthenticatedAPI();
-    const { sendTransactionAsync } = useSendTransaction();
+    const { sendTransactionAsync } = useSendTransaction({config:wagmiConfig});
+    const purchaseConfirmMutation = usePurchaseConfirm();
 
     const [loading, setLoading] = useState(false);
     const [checkoutStarted, setCheckoutStarted] = useState(false);
@@ -129,17 +132,17 @@ const CartPage = () => {
             setCurrentStep(2);
             updateStepState(2, 'active');
             
-            // Wait 4 seconds before confirming purchase
-            await new Promise(resolve => setTimeout(resolve, 4000));
+            // Wait 2 seconds before confirming purchase
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
-            const confirmRes = await post('/api/purchase/confirm', {
+            if (!lastTxHash) {
+                throw new Error('Transaction hash is missing');
+            }
+            
+            const confirmResult = await purchaseConfirmMutation.mutateAsync({
                 purchaseId: data.purchaseId,
                 transactionHash: lastTxHash,
             });
-            
-            if (confirmRes?.error) {
-                throw new Error('Failed to confirm purchase. Contact support if payment was processed.');
-            }
             
             updateStepState(2, 'completed');
             
@@ -161,8 +164,12 @@ const CartPage = () => {
             
             setCheckoutError(errorMessage);
             
-            // Mark the current step as error (currentStep now correctly reflects the active step)
-            updateStepState(currentStep, 'error');
+            const activeStepIndex = stepStates.findIndex(state => state === 'active');
+            if (activeStepIndex !== -1) {
+                updateStepState(activeStepIndex, 'error');
+            } else {
+                updateStepState(currentStep, 'error');
+            }
             
             toast.error(errorMessage);
         } finally {
@@ -203,7 +210,12 @@ const CartPage = () => {
                 <div className='fixed left-0 bottom-12 w-full backdrop-blur-3xl bg-gradient-to-t from-gray-300/95 to-transparent flex flex-col gap-4 p-5.5 z-10 pb-8'>
                     <div className='flex w-full justify-between items-center'>
                         <p className='text-lg font-semibold'>Total:</p>
-                        <p className='text-xl font-normal'><span className='font-semibold'>$</span>{cart.reduce((sum, p) => sum + (p.price || 0), 0).toFixed(2)}</p>
+                        <p className='text-xl font-normal'>
+                            {(() => {
+                                const total = cart.reduce((sum, p) => sum + (p.price || 0), 0);
+                                return total === 0 ? 'Free' : `$${total.toFixed(2)}`;
+                            })()}
+                        </p>
                     </div>
 
                     {/* Checkout Steps */}

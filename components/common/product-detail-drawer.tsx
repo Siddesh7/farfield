@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FC } from 'react';
+import React, { FC, useState } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -11,16 +11,17 @@ import {
 import { Button } from '@/components/ui';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ErrorDisplay } from '@/components/ui/error-display';
-import { X, Download, CircleUser, ExternalLink } from 'lucide-react';
-import Image from 'next/image';
-import { useGetProductById } from '@/query';
+import { X, Download, Check } from 'lucide-react';
+import { useGetProductById, useSubmitRating } from '@/query';
 import { useProductAccess } from '@/query/use-product-access';
 import { CommentComponent } from '@/modules/home/components/comment-component';
 import { BASE_URL } from '@/config';
 import { toast } from 'sonner';
 import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
 import JSZip from 'jszip';
-import { CopyIcon, DoubleTickIcon } from '@/components/icons';
+import { CopyIcon, DoubleTickIcon, StarIcon } from '@/components/icons';
+
+import Image from 'next/image';
 
 interface ProductDetailDrawerProps {
   isOpen: boolean;
@@ -36,6 +37,15 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   const { data: product, isLoading, error } = useGetProductById(productId);
   const { data: accessData, isLoading: accessLoading } = useProductAccess(productId);
   const { authenticatedFetch } = useAuthenticatedFetch();
+  const submitRatingMutation = useSubmitRating();
+
+  // Rating state
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  
+  // Download and copy states
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
 
   // Handle download functionality
   const handleDownload = async (url: string, fileName: string) => {
@@ -52,8 +62,6 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-
-      toast.success(`Downloading ${fileName}`);
     } catch (error) {
       toast.error('Download failed. Please try again.');
       console.error('Download error:', error);
@@ -89,10 +97,11 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
-        toast.success('Zip download started');
+        setIsDownloaded(true);
       } else {
         const file = accessData.downloadUrls[0];
         await handleDownload(file.url, file.fileName);
+        setIsDownloaded(true);
       }
     } catch (error) {
       toast.error('Download failed. Please try again.');
@@ -101,15 +110,41 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   };
 
   // Handle external link copy
-  const handleExternalLink = (url: string, name: string) => {
+  const handleExternalLink = (url: string, name: string, index: number) => {
     navigator.clipboard.writeText(url).then(() => {
-      toast.success(`${name} link copied to clipboard!`);
+      setCopiedLinks(prev => new Set(prev).add(index));
+      
+      // Reset the copied state after 1 second
+      setTimeout(() => {
+        setCopiedLinks(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(index);
+          return newSet;
+        });
+      }, 1000);
     }).catch(() => {
       toast.error('Failed to copy link');
     });
   };
 
+  // Handle rating submission
+  const handleRatingSubmit = (rating: number) => {
+    if (!product || submitRatingMutation.isPending) return;
+
+    submitRatingMutation.mutate(
+      { productId: product.id, rating },
+      {
+        onSuccess: () => {
+          setSelectedRating(rating);
+        },
+      }
+    );
+  };
+
   const canDownload = accessData?.hasAccess || accessData?.hasPurchased;
+  
+  // Show verified icon if the product creator is verified
+  const shouldShowVerifiedIcon = product?.creator.isVerified;
 
   return (
     <Drawer open={isOpen} onOpenChange={onClose} direction="bottom">
@@ -133,7 +168,7 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
           </div>
         </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4">
+        <div className="flex-1 overflow-y-auto px-4 pb-20">
           {isLoading ? (
             <div className="flex justify-center items-center py-12">
               <LoadingSpinner size="lg" />
@@ -164,128 +199,126 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
                 <h2 className="text-xl font-bold text-gray-900">{product.name}</h2>
               </div>
 
-              {/* Creator Info */}
-              <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-lg">
-                <div className="relative w-12 h-12">
+              <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
+                <div className='relative w-5 h-5'>
                   <img
-                    src={product.creator?.pfp || "/profile.jpg"}
-                    alt={product.creator?.name || "Creator"}
-                    className="rounded-full object-cover w-full h-full"
+                    src={product.creator?.pfp}
+                    alt={product.creator?.name}
+                    className='rounded-xs object-cover w-full h-full'
                   />
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{product.creator?.name || "Unknown"}</p>
-                  <p className="text-sm text-gray-500">@{product.creator?.username || "unknown"}</p>
-                </div>
-                <div className="flex items-center gap-2">
+                <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
+                {shouldShowVerifiedIcon && (
                   <Image
-                    src="/USDC.jpg"
-                    alt="USDC"
-                    width={24}
-                    height={24}
-                    className="rounded-md"
+                    src="/verified.jpg"
+                    alt='Verified Icon'
+                    width={16}
+                    height={16}
                   />
-                  <span className="font-semibold text-lg">${product.price}</span>
-                </div>
+                )}
               </div>
 
-              {/* Category */}
-              <div className="flex gap-2 bg-gray-100 w-max rounded px-3 py-1 items-center">
-                <CircleUser size={16} />
-                <span className="text-sm">{product.category}</span>
-              </div>
-
-              {/* Description */}
-              <div>
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-
-              {/* Download/Access Section */}
-              {canDownload && (
-                <div className="space-y-2">
-                  {/* Digital Files Download */}
-                  {accessData?.downloadUrls && accessData.downloadUrls.length > 0 && (
-                    <Button
-                      onClick={handleDownloadAll}
-                      className="w-full font-semibold bg-blue-600 hover:bg-blue-700"
-                      size="lg"
-                      disabled={accessLoading}
-                    >
-                      {accessLoading ? (
-                        <LoadingSpinner size="sm" />
-                      ) : (
-                        <>
-                          <Download className="mr-2 h-4 w-4" />
-                          Download All Contents
-                        </>
-                      )}
-                    </Button>
-                  )}
-
-                  {/* External Links */}
-                  {accessData?.externalLinks && accessData.externalLinks.length > 0 && (
-                    <>
-                      {accessData.externalLinks.map((link, index) => (
-                        <Button
-                          key={index}
-                          size="lg"
-                          variant="default"
-                          className="w-full font-semibold"
-                          onClick={() => handleExternalLink(link.url, link.name)}
-                        >
-                          <CopyIcon width={16} />
-                          Copy
-                            <span className='lowercase'>{link.name}</span>
-                          link
-                        </Button>
-                      ))}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Purchase Status */}
-              {accessData?.purchaseDetails && (
-                <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-                  <DoubleTickIcon width={20} color="#0ED065" />
-                  <span className="text-sm font-medium">You have purchased this product</span>
-                </div>
-              )}
-
-              {/* Buyers Section */}
-              {product.buyers && product.buyers.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-600">Recent buyers:</p>
-                  <div className="flex -space-x-2">
-                    {product.buyers.slice(0, 5).map((buyer, idx) => (
-                      <div className="relative w-8 h-8" key={idx}>
-                        <img
-                          src={buyer?.pfp || "/profile.jpg"}
-                          alt={`Buyer ${idx + 1}`}
-                          className="rounded-full border-2 border-white object-cover w-full h-full"
-                          style={{ zIndex: idx }}
+              {/* Rating Section */}
+              {canDownload && !accessData?.isCreator && (
+                <div className="space-y-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-[#000000E0] m-0">Liked it? Give it a rating</p>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => handleRatingSubmit(star)}
+                        onMouseEnter={() => setHoveredRating(star)}
+                        onMouseLeave={() => setHoveredRating(0)}
+                        disabled={submitRatingMutation.isPending || selectedRating > 0}
+                        className={`transition-all duration-200 ${submitRatingMutation.isPending || selectedRating > 0
+                            ? 'cursor-not-allowed'
+                            : 'cursor-pointer hover:scale-110'
+                          }`}
+                      >
+                        <StarIcon
+                          width={20}
+                          isActive={
+                            selectedRating > 0
+                              ? star <= selectedRating
+                              : star <= (hoveredRating || 0)
+                          }
                         />
-                      </div>
+                      </button>
                     ))}
-                    {product.buyers.length > 5 && (
-                      <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full border-2 border-white text-xs font-medium text-gray-600">
-                        +{product.buyers.length - 5}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
 
               {/* Comments Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Comments</h3>
                 <CommentComponent product={product} />
               </div>
             </div>
           )}
         </div>
+
+        {/* Fixed Download/Access Section at Bottom */}
+        {canDownload && (
+          <div className="backdrop-blur-3xl bg-gradient-to-t from-gray-300/95 to-transparent border-t p-4 space-y-3">
+            {/* Digital Files Download */}
+            {accessData?.downloadUrls && accessData.downloadUrls.length > 0 && (
+              <Button
+                onClick={handleDownloadAll}
+                className="w-full font-semibold"
+                size="lg"
+                disabled={accessLoading || isDownloaded}
+              >
+                {accessLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : isDownloaded ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Downloaded
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </>
+                )}
+              </Button>
+            )}
+
+            {/* External Links */}
+            {accessData?.externalLinks && accessData.externalLinks.length > 0 && (
+              <>
+                {accessData.externalLinks.map((link, index) => {
+                  const isCopied = copiedLinks.has(index);
+                  return (
+                    <Button
+                      key={index}
+                      size="lg"
+                      variant="default"
+                      className="w-full font-semibold"
+                      onClick={() => handleExternalLink(link.url, link.name, index)}
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Copied
+                          <span className='lowercase'>{link.type}</span>
+                          link
+                        </>
+                      ) : (
+                        <>
+                          <CopyIcon width={16} />
+                          Copy
+                          <span className='lowercase'>{link.type}</span>
+                          link
+                        </>
+                      )}
+                    </Button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        )}
       </DrawerContent>
     </Drawer>
   );

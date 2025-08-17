@@ -12,7 +12,7 @@ const HeaderSection = () => {
     const { address, isConnected } = useAccount();
     const { activeModule, selectedProduct, setActiveModule, setSelectedProduct } = useGlobalContext();
 
-    const showBackArrow = selectedProduct && (activeModule === 'home' || activeModule === 'cart')
+    const showBackArrow = selectedProduct && (activeModule === 'home')
 
     if (activeModule === 'profile') return null
 
