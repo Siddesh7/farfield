@@ -15,14 +15,55 @@ interface SuccessModalProps {
     onOpenChange: (open: boolean) => void;
     shareLink?: string;
     onClose?: () => void;
+    productData?: {
+        _id: string;
+        name: string;
+        description: string;
+        category: string;
+        price: number;
+        creator: {
+            name: string;
+            username: string;
+        };
+    };
 }
 
-const SuccessModal: React.FC<SuccessModalProps> = ({ open, onOpenChange, shareLink, onClose }) => {
+const SuccessModal: React.FC<SuccessModalProps> = ({ 
+    open, 
+    onOpenChange, 
+    shareLink, 
+    onClose,
+    productData 
+}) => {
     const handleModalClose = (isOpen: boolean) => {
         onOpenChange(isOpen);
         if (!isOpen && onClose) {
             onClose();
         }
+    };
+
+    const handleFarcasterShare = () => {
+        if (!productData) return;
+
+        const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
+        const productUrl = `${baseUrl}?product=${productData._id}`;
+        
+        // Create the share text with Farfield mention
+        const shareText = `🚀 Just launched "${productData.name}" on @farfield! 
+
+${productData.description.length > 100 ? 
+    productData.description.substring(0, 100) + '...' : 
+    productData.description}
+
+${productData.price === 0 ? '🆓 Free' : `💰 $${productData.price}`} • ${productData.category}
+
+Check it out! 👇`;
+
+        // Create Farcaster share URL
+        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(productUrl)}`;
+        
+        // Open in new tab
+        window.open(farcasterUrl, '_blank');
     };
 
     return (
@@ -37,16 +78,21 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ open, onOpenChange, shareLi
                     </div>
                 </div>
                 <DialogFooter className="sm:justify-start">
-                    <DialogClose asChild>
-                        <div className='flex gap-2 flex-1'>
+                    <div className='flex gap-2 flex-1'>
+                        <DialogClose asChild>
                             <Button size='lg' type="button" variant="secondary" className='flex-1'>
                                 Close
                             </Button>
-                            <Button size='lg' type="button" className='flex-2'>
-                                Share on Farcaster
-                            </Button>
-                        </div>
-                    </DialogClose>
+                        </DialogClose>
+                        <Button 
+                            size='lg' 
+                            type="button" 
+                            className='flex-2'
+                            onClick={handleFarcasterShare}
+                        >
+                            Share on Farcaster
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
