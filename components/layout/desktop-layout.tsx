@@ -17,13 +17,30 @@ const DesktopLayout = () => {
           size="lg"
           className="min-w-md"
           onClick={() => {
-            window.open(
-              "https://farcaster.xyz/miniapps/9OlQm7ZO9S_M/farfield",
-              "_blank"
-            );
+            try {
+              // Try window.open first
+              const newWindow = window.open(
+                "https://farcaster.xyz/miniapps/9OlQm7ZO9S_M/farfield",
+                "_blank",
+                "noopener,noreferrer"
+              );
+
+              // If popup was blocked, fallback to window.location
+              if (
+                !newWindow ||
+                newWindow.closed ||
+                typeof newWindow.closed === "undefined"
+              ) {
+                window.location.href =
+                  "https://farcaster.xyz/miniapps/9OlQm7ZO9S_M/farfield";
+              }
+            } catch (error) {
+              // Fallback if window.open fails
+              window.location.href =
+                "https://farcaster.xyz/miniapps/9OlQm7ZO9S_M/farfield";
+            }
           }}
         >
-          {" "}
           Open In Farcaster <ArrowUpRight />
         </Button>
       </div>
