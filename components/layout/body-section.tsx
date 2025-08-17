@@ -3,6 +3,7 @@ import { CartPage } from '@/modules/cart';
 import { HomePage } from '@/modules/home';
 import React, { useState, useCallback } from 'react';
 import { ProfilePage } from '@/modules/profile';
+import { NotificationsPage } from '@/modules/notifications';
 import { useGetMyProducts, useGetProducts, useGetPurchasedProducts } from '@/query';
 import { CreateProduct } from '@/modules/createProduct';
 import { Product } from '@/lib/types/product';
@@ -78,6 +79,7 @@ const BodySection = () => {
             )}
             {activeModule === 'cart' && <CartPage />}
             {activeModule === 'add-product' && <CreateProduct refetchAllProducts={refetchAllProducts} />}
+            {activeModule === 'notifications' && <NotificationsPage />}
             {activeModule === 'profile' && <ProfilePage
                 listedProducts={myProducts}
                 purchasedproducts={purchasedProducts}
