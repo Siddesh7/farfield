@@ -236,15 +236,14 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                 onClick={() => !uploadingProductFile && productFilesInputRef.current?.click()}
                             >
                                 <Upload />
-                                <p>Upload multiple files (PDF, PNG, MP3) </p>
+                                <p>Upload Images, PDFs, Audio, or Video files</p>
                             </div>
                         )}
                         <input
                             ref={productFilesInputRef}
                             id="productFiles"
                             type="file"
-                            multiple
-                            accept="image/*,application/pdf,audio/mp3"
+                            accept="image/*,application/pdf,audio/*,video/*"
                             className="hidden"
                             onChange={handleProductFilesChange}
                             disabled={uploadingProductFile}
