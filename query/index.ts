@@ -8,3 +8,4 @@ export * from "./use-delete-product";
 export * from "./use-rating";
 export * from "./use-user-profile";
 export * from "./use-purchase-confirm";
+export * from "./use-search-products";

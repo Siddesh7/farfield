@@ -4,7 +4,7 @@ import { HomePage } from '@/modules/home';
 import React, { useState, useCallback } from 'react';
 import { ProfilePage } from '@/modules/profile';
 import { NotificationsPage } from '@/modules/notifications';
-import { useGetMyProducts, useGetProducts, useGetPurchasedProducts } from '@/query';
+import { useGetMyProducts, useGetProducts, useGetPurchasedProducts, useSearchProducts } from '@/query';
 import { CreateProduct } from '@/modules/createProduct';
 import { Product } from '@/lib/types/product';
 
@@ -17,8 +17,21 @@ const BodySection = () => {
     const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Search state
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+
     // Call the regular products query
     const { data: currentPageProducts, isLoading: loadingProducts, error, refetch: refetchAllProducts } = useGetProducts(page, limit, category);
+
+    // Search query
+    const { data: searchResults = [], isLoading: searchLoading } = useSearchProducts({
+        query: searchQuery,
+        page: 1,
+        limit: 20, // More results for search
+        category: category !== 'All' ? category : undefined,
+        enabled: isSearching && !!searchQuery,
+    });
 
     // When we get new products, add them to our accumulated list
     React.useEffect(() => {
@@ -52,6 +65,17 @@ const BodySection = () => {
         }
     }, [loadingMore, loadingProducts, currentPageProducts, limit]);
 
+    // Search handlers
+    const handleSearch = useCallback((query: string) => {
+        setSearchQuery(query);
+        setIsSearching(true);
+    }, []);
+
+    const handleClearSearch = useCallback(() => {
+        setSearchQuery('');
+        setIsSearching(false);
+    }, []);
+
     // Users listed and bought products details
     const {
         data: myProducts,
@@ -75,6 +99,12 @@ const BodySection = () => {
                     setCategory={setCategory}
                     loadNextPage={loadNextPage}
                     loadingMore={loadingMore || (loadingProducts && page > 1)}
+                    onSearch={handleSearch}
+                    onClearSearch={handleClearSearch}
+                    isSearching={isSearching}
+                    searchQuery={searchQuery}
+                    searchResults={searchResults}
+                    searchLoading={searchLoading}
                 />
             )}
             {activeModule === 'cart' && <CartPage />}
