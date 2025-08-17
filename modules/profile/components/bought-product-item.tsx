@@ -35,7 +35,9 @@ const BoughtProductItem = ({
                     </div>
                 </div>
                 <div className="flex flex-row gap-3 items-center">
-                    <p className='text-lg font-medium'>${product.price}</p>
+                    <p className='text-lg font-medium'>
+                        {product.price === 0 ? 'Free' : `$${product.price}`}
+                    </p>
                     <button 
                         className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#0000001A] transition-colors cursor-pointer"
                         onClick={handleArrowClick}

@@ -34,7 +34,9 @@ const ProductCard = ({ product }: { product: Product }) => {
                     {product.name.split(" ").slice(0, 7).join(" ")}
                     {product.name.split(" ").length > 7 ? "..." : ""}
                 </p>
-                <p className="text-sm font-medium">${product.price}</p>
+                <p className="text-sm font-medium">
+                    {product.price === 0 ? 'Free' : `$${product.price}`}
+                </p>
             </div>
         </div>
     );

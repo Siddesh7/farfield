@@ -11,6 +11,7 @@ import { sdk } from "@farcaster/frame-sdk";
 import { createContext, useContext, useEffect, useState } from "react";
 import { GlobalContextProvider } from "@/context/global-context";
 import ServiceWorkerRegister from "@/components/common/service-worker-register";
+import { wagmiConfig } from "@/config";
 
 // Mini App Context
 const MiniAppContext = createContext<{
@@ -103,13 +104,6 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
 }
 
 const queryClient = new QueryClient();
-const wagmiConfig = createConfig({
-  chains: [base, baseSepolia],
-  transports: {
-    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || ""),
-    [baseSepolia.id]: http(process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL || ""),
-  },
-});
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (

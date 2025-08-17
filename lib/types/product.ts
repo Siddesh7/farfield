@@ -53,6 +53,7 @@ export type Product = {
     name: string;
     pfp: string;
     username: string;
+    isVerified?: boolean;
   };
   slug?: string;
   category: string;
@@ -142,6 +143,7 @@ export interface ProductAccessResponse {
     username: string;
     pfp: string | null;
     isSubscribed: boolean;
+    isVerified?: boolean;
   } | null;
 }
 
@@ -162,17 +164,10 @@ export type CreateProductFormVariables = {
       url: string;
       type: string;
   }>;
-  previewFiles: Array<{
-      fileName: string;
-      fileUrl: string;
-      fileSize: number;
-  }>;
   tags: string[] | string;
   fileFormat: string[] | string;
   discountPercentage?: number;
   coverImageFile: File | null;  // cover image file
-  togglePreviewImage: boolean;
-  previewFile: File | null; // preview image file
   productFiles: File[]; // product files
   productLink: string;
 };

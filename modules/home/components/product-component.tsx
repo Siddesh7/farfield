@@ -8,15 +8,16 @@ import { getTruncatedDescription } from '@/lib/utils';
 import ProductAccessComponent from './product-access-component';
 import { BASE_URL } from '@/config';
 
+
 const ProductComponent = ({
     product
 }: {
     product: Product
 }) => {
-
     const [showFullDescription, setShowFullDescription] = useState(false);
-
-    console.log("Product >>>",product);
+    
+    // Show verified icon if the product creator is verified
+    const shouldShowVerifiedIcon = product.creator.isVerified;
 
     return (
         <>
@@ -33,7 +34,7 @@ const ProductComponent = ({
                 <div className='flex flex-col gap-5.5'>
                     <div className='flex flex-col gap-4.5'>
                         <div className='flex justify-between items-center'>
-                            <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
+                            <div className='flex gap-1 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
                                 <div className='relative w-5 h-5'>
                                     <img
                                         src={product.creator?.pfp}
@@ -42,24 +43,36 @@ const ProductComponent = ({
                                     />
                                 </div>
                                 <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
+                                {shouldShowVerifiedIcon && (
+                                    <Image
+                                        src="/verified.jpg"
+                                        alt='Verified Icon'
+                                        width={16}
+                                        height={16}
+                                    />
+                                )}
                             </div>
                             <div className='flex gap-2 items-center bg-blue'>
-                                <div className="flex items-center justify-center">
-                                    <Image
-                                        src="/USDC.jpg"
-                                        alt='USDC'
-                                        width={24}
-                                        height={24}
-                                        className="rounded-md"
-                                    />
-                                </div>
-                                <p className='font-semibold text-xl'>${product.price}</p>
+                                {product.price > 0 && (
+                                    <div className="flex items-center justify-center">
+                                        <Image
+                                            src="/USDC.jpg"
+                                            alt='USDC'
+                                            width={24}
+                                            height={24}
+                                            className="rounded-md"
+                                        />
+                                    </div>
+                                )}
+                                <p className='font-semibold text-xl'>
+                                    {product.price === 0 ? 'Free' : `$${product.price}`}
+                                </p>
                             </div>
                         </div>
                         <div className='flex flex-col gap-2'>
                             <p className='font-inter text-lg font-medium'>{product.name}</p>
-                            <div className="flex gap-2 bg-[#0000000A] w-min rounded-[4px] px-1.5 items-center shadow">
-                                <CircleUser size={20} /> {product.category}
+                            <div className="flex gap-2 bg-[#0000000A] text-[12px] w-min rounded-[4px] px-1.5 items-center shadow">
+                                <CircleUser size={14} /> {product.category}
                             </div>
                         </div>
                         <div className='flex justify-between items-center py-2'>
