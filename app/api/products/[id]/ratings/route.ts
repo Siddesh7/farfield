@@ -4,6 +4,7 @@ import { Purchase } from "@/models/purchase";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, RequestValidator } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { NotificationService } from "@/lib/services/notification-service";
 import mongoose from "mongoose";
 
 // GET /api/products/[id]/ratings - Get product rating statistics (Public)
@@ -43,39 +44,6 @@ async function getProductRatingsHandler(
     averageRating: product.ratingsScore,
     totalRatings: product.totalRatings,
     ratingsBreakdown: product.ratingsBreakdown,
-    // Calculate percentages for each rating
-    ratingsPercentages: {
-      1:
-        product.totalRatings > 0
-          ? Math.round(
-              (product.ratingsBreakdown[1] / product.totalRatings) * 100
-            )
-          : 0,
-      2:
-        product.totalRatings > 0
-          ? Math.round(
-              (product.ratingsBreakdown[2] / product.totalRatings) * 100
-            )
-          : 0,
-      3:
-        product.totalRatings > 0
-          ? Math.round(
-              (product.ratingsBreakdown[3] / product.totalRatings) * 100
-            )
-          : 0,
-      4:
-        product.totalRatings > 0
-          ? Math.round(
-              (product.ratingsBreakdown[4] / product.totalRatings) * 100
-            )
-          : 0,
-      5:
-        product.totalRatings > 0
-          ? Math.round(
-              (product.ratingsBreakdown[5] / product.totalRatings) * 100
-            )
-          : 0,
-    },
   };
 
   return ApiResponseBuilder.success(
@@ -151,14 +119,22 @@ async function addProductRatingHandler(
     }
   }
 
-  // Note: This is a simplified rating system. In a real application, you'd want to:
-  // 1. Track individual user ratings to prevent duplicate ratings
-  // 2. Allow users to update their existing ratings
-  // 3. Store ratings in a separate collection for better querying
-  // For now, we'll just add the rating using the existing model method
-
   try {
     await product.addRating(body.rating);
+
+    // 🚀 NEW: Trigger notification for rating
+    try {
+      await NotificationService.handleRatingEvent({
+        productId: product._id.toString(),
+        productName: product.name,
+        raterFid: user.farcasterFid,
+        creatorFid: product.creatorFid,
+        rating: body.rating,
+      });
+    } catch (notificationError) {
+      console.error("Error creating rating notification:", notificationError);
+      // Don't fail the rating if notification fails
+    }
 
     const updatedStats = {
       averageRating: product.ratingsScore,
@@ -179,12 +155,4 @@ async function addProductRatingHandler(
 
 // Export handlers
 export const GET = withErrorHandling(getProductRatingsHandler);
-
-async function protectedRatingHandler(
-  request: Request,
-  authenticatedUser: AuthenticatedUser
-) {
-  return addProductRatingHandler(request, authenticatedUser);
-}
-
-export const POST = withErrorHandling(withAuth(protectedRatingHandler));
+export const POST = withErrorHandling(withAuth(addProductRatingHandler));

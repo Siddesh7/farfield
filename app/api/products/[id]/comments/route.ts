@@ -3,6 +3,7 @@ import { User } from "@/models/user";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, RequestValidator } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { NotificationService } from "@/lib/services/notification-service";
 import mongoose from "mongoose";
 
 // GET /api/products/[id]/comments - Get product comments (Public)
@@ -63,34 +64,25 @@ async function getProductCommentsHandler(
     .slice(skip, skip + limit);
 
   // Batch fetch user info for all unique commentorFids
-  const uniqueFids = [
-    ...new Set(paginatedComments.map((c: any) => c.commentorFid)),
-  ];
+  const uniqueFids = [...new Set(paginatedComments.map((c: any) => c.commentorFid))];
   const users = await User.find({ farcasterFid: { $in: uniqueFids } });
-  const userMap = new Map(
-    users.map((u) => [
-      u.farcasterFid,
-      {
-        fid: u.farcasterFid,
-        name: u.farcaster.displayName,
-        username: u.farcaster.username,
-        pfp: u.farcaster.pfp || null,
-        isVerified: u.isVerified,
-      },
-    ])
-  );
+  
+  // Create a map for quick user lookup
+  const userMap = users.reduce((acc: any, user: any) => {
+    acc[user.farcasterFid] = user.toPublicJSON();
+    return acc;
+  }, {});
 
-  // Attach user info to each comment
-  const commentsWithUser = paginatedComments.map((comment: any) => ({
+  // Enrich comments with user data
+  const enrichedComments = paginatedComments.map((comment: any) => ({
     _id: comment._id,
-    commentorFid: comment.commentorFid,
     comment: comment.comment,
     createdAt: comment.createdAt,
-    commentor: userMap.get(comment.commentorFid) || null,
+    commentor: userMap[comment.commentorFid] || null,
   }));
 
   return ApiResponseBuilder.paginated(
-    commentsWithUser,
+    enrichedComments,
     page,
     limit,
     total,
@@ -149,6 +141,20 @@ async function addProductCommentHandler(
   // Add comment using the model method
   await product.addComment(user.farcasterFid, body.comment);
 
+  // 🚀 NEW: Trigger notification for comment
+  try {
+    await NotificationService.handleCommentEvent({
+      productId: product._id.toString(),
+      productName: product.name,
+      commenterFid: user.farcasterFid,
+      creatorFid: product.creatorFid,
+      comment: body.comment,
+    });
+  } catch (notificationError) {
+    console.error("Error creating comment notification:", notificationError);
+    // Don't fail the comment if notification fails
+  }
+
   // Get the newly added comment
   const rawComment = product.comments[product.comments.length - 1];
   const newComment = {
@@ -167,12 +173,4 @@ async function addProductCommentHandler(
 
 // Export handlers
 export const GET = withErrorHandling(getProductCommentsHandler);
-
-async function protectedCommentHandler(
-  request: Request,
-  authenticatedUser: AuthenticatedUser
-) {
-  return addProductCommentHandler(request, authenticatedUser);
-}
-
-export const POST = withErrorHandling(withAuth(protectedCommentHandler));
+export const POST = withErrorHandling(withAuth(addProductCommentHandler));
