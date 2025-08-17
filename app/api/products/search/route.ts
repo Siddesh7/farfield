@@ -98,8 +98,18 @@ async function searchProductsHandler(request: Request) {
   // Build filter object
   const filter: any = {
     publishedAt: { $ne: null }, // Only show published products
-    $text: { $search: query.q }, // Text search
   };
+
+  // Use regex search for partial word matching - ONLY on product names
+  if (query.q.trim()) {
+    const searchTerm = query.q.trim();
+    // Escape special regex characters to prevent injection
+    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const searchRegex = new RegExp(escapedTerm, 'i'); // Case-insensitive
+    
+    // Only search in product names
+    filter.name = searchRegex;
+  }
 
   if (query.category) {
     filter.category = query.category;
@@ -142,26 +152,19 @@ async function searchProductsHandler(request: Request) {
   // Calculate pagination
   const skip = (query.page - 1) * query.limit;
 
-  // Build sort object
+  // Build sort object - NO textScore for regex search
   const sort: any = {};
 
   if (query.sortBy === "relevance") {
-    // Sort by text search score (MongoDB text search relevance)
-    sort.score = { $meta: "textScore" };
+    // For regex search, sort by creation date as primary relevance
+    sort.createdAt = -1;
   } else {
     sort[query.sortBy] = query.sortOrder === "asc" ? 1 : -1;
   }
 
-  // Execute query with pagination
-  let productQuery = Product.find(filter);
-
-  // Add text score for relevance sorting
-  if (query.sortBy === "relevance") {
-    productQuery = productQuery.select({ score: { $meta: "textScore" } });
-  }
-
+  // Execute query with pagination - NO textScore selection
   const [products, total] = await Promise.all([
-    productQuery.sort(sort).skip(skip).limit(query.limit).exec(),
+    Product.find(filter).sort(sort).skip(skip).limit(query.limit).exec(),
     Product.countDocuments(filter),
   ]);
 
@@ -170,8 +173,6 @@ async function searchProductsHandler(request: Request) {
     const productObj = product.toObject();
     // Remove buyer information from public search results
     delete productObj.buyer;
-    // Remove text search score from response (internal use only)
-    delete productObj.score;
     return productObj;
   });
 
