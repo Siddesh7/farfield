@@ -421,8 +421,8 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
             <SuccessModal
                 open={open}
                 onOpenChange={setOpen}
-                shareLink="https://your.custom.link/here"
                 onClose={handleModalClose}
+                productData={createdProduct}
             />
         </BoxContainer>
     );
