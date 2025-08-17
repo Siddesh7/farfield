@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from '@/components/ui';
 import { SuccessIcon } from '@/components/icons';
+import { sdk } from '@farcaster/frame-sdk';
 
 interface SuccessModalProps {
     open: boolean;
@@ -42,7 +43,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         }
     };
 
-    const handleFarcasterShare = () => {
+    const handleFarcasterShare = async () => {
         if (!productData) return;
 
         const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
@@ -51,13 +52,25 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
         // Create the simple share text as requested
         const shareText = `I just created my first product on farfield.
 
-Check it out ${productUrl}`;
+Check it out`;
 
-        // Create Farcaster share URL
-        const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
-        
-        // Open in new tab
-        window.open(farcasterUrl, '_blank');
+console.log(productUrl)
+        try {
+            const result = await sdk.actions.composeCast({
+                text: shareText,
+                embeds: [productUrl]
+            });
+
+            // result.cast can be null if user cancels
+            if (result?.cast) {
+                console.log('Cast posted successfully:', result.cast.hash);
+                // Optionally close the modal after successful sharing
+                handleModalClose(false);
+            }
+        } catch (error) {
+            console.error('Error composing cast:', error);
+            // Could show a toast error here if needed
+        }
     };
 
     return (
