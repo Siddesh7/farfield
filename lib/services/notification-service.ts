@@ -31,7 +31,7 @@ export class NotificationService {
   }
 
   /**
-   * Handle purchase event - creates notifications for both buyer and seller
+   * Handle purchase event - creates notification for seller only
    */
   static async handlePurchaseEvent(eventData: NotificationEventData): Promise<void> {
     await connectDB();
@@ -48,24 +48,15 @@ export class NotificationService {
         return;
       }
 
-      // Create notifications for both parties with engaging messages
-      const notifications = [
-        {
-          userId: buyer._id.toString(),
-          message: `You purchased ${eventData.productName}`,
-          type: "purchase" as const,
-        },
-        {
-          userId: seller._id.toString(),
-          message: `Woohh! You made a sale @${buyer.farcaster.username} bought ${eventData.productName}`,
-          type: "sale" as const,
-        },
-      ];
+      // Create notification only for seller (removed buyer purchase notification)
+      const notification = {
+        userId: seller._id.toString(),
+        message: `Woohh! You made a sale @${buyer.farcaster.username} bought ${eventData.productName}`,
+        type: "sale" as const,
+      };
 
-      // Create notifications in parallel
-      await Promise.all(
-        notifications.map(notification => this.createNotification(notification))
-      );
+      // Create notification for seller only
+      await this.createNotification(notification);
     } catch (error) {
       console.error("Error handling purchase event:", error);
     }
