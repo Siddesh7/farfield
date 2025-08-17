@@ -13,3 +13,4 @@ export { default as CopyIcon } from "./components/copy-icon";
 export { default as WalletIcon } from "./components/wallet-icon";
 export { default as FileIcon } from "./components/file-icon";
 export { default as SwapIcon } from "./components/transaction-icon";
+export { default as DeleteIcon } from "./components/delete-icon";

@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { sdk } from '@farcaster/frame-sdk';
 
 const BottomNavigation = () => {
-  const { activeModule, setActiveModule,selectedProduct,setSelectedProduct } = useGlobalContext();
+  const { activeModule, setActiveModule, selectedProduct, setSelectedProduct, cart } = useGlobalContext();
 
   const handleModuleClick = useCallback(
     (module: ModulesType) => {
@@ -49,11 +49,18 @@ const BottomNavigation = () => {
           handleModuleClick("home")
         }}
       />
-      <ShoppingIcon
-        width={28}
-        isActive={activeModule === "cart"}
-        onClick={() => handleModuleClick("cart")}
-      />
+      <div className="relative">
+        <ShoppingIcon
+          width={28}
+          isActive={activeModule === "cart"}
+          onClick={() => handleModuleClick("cart")}
+        />
+        {cart.length > 0 && (
+          <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+            {cart.length > 9 ? '9+' : cart.length}
+          </div>
+        )}
+      </div>
       <PlusIcon
         width={28}
         isActive={activeModule === "add-product"}

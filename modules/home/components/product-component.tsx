@@ -69,14 +69,11 @@ const ProductComponent = ({
                                 </p>
                             </div>
                         </div>
-                        <div className='flex flex-col gap-2'>
+                        <div className='flex flex-col'>
                             <p className='font-inter text-lg font-medium'>{product.name}</p>
-                            <div className="flex gap-2 bg-[#0000000A] text-[12px] w-min rounded-[4px] px-1.5 items-center shadow">
-                                <CircleUser size={14} /> {product.category}
-                            </div>
                         </div>
-                        <div className='flex justify-between items-center py-2'>
-                            {product.buyers && product.buyers.length > 0 && (
+                        {product.buyers && product.buyers.length > 0 && (
+                            <div className='flex justify-between items-center py-2'>
                                 <div className='flex items-center'>
                                     <p className='text-sm font-normal text-fade'>Bought by:</p>
                                     <div className='flex -space-x-2 ml-2'>
@@ -92,8 +89,8 @@ const ProductComponent = ({
                                         ))}
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
 
                         <div>
                             <p className='font-inter text-sm font-normal text-fade'>

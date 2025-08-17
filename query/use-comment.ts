@@ -33,7 +33,7 @@ export function useAddProductComment(productId: string) {
             return response.data;
         },
         onSuccess: () => {
-            // Invalidate and refetch comments for this product
+            // Refetch comments after successful addition
             queryClient.invalidateQueries({ queryKey: ["product-comments", productId] });
         },
     });

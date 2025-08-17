@@ -4,16 +4,7 @@ import { toast } from "sonner"
 import { useState } from "react"
 import { Trash2 } from "lucide-react"
 import { useDeleteProduct } from "@/query/use-delete-product"
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogDescription, 
-    DialogFooter, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogTrigger 
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { DeleteConfirmationModal } from "@/modules/home/components/delete-confirmation-modal"
 
 const ListedProductItem = ({
     product
@@ -28,7 +19,6 @@ const ListedProductItem = ({
         deleteProductMutation.mutate(product.id, {
             onSuccess: () => {
                 setIsDialogOpen(false);
-                toast.success("Product deleted successfully");
             },
             onError: (error) => {
                 toast.error(error.message || "Failed to delete product");
@@ -58,41 +48,22 @@ const ListedProductItem = ({
                 <p className='text-lg font-medium'>
                     {product.price === 0 ? 'Free' : `$${product.price}`}
                 </p>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
-                        <button 
-                            className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#ff000020] hover:border-red-200 transition-colors cursor-pointer"
-                        >
-                            <Trash2 width={16} className="text-red-600" />
-                        </button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                            <DialogTitle>Delete Product</DialogTitle>
-                            <DialogDescription>
-                                Are you sure you want to delete "{product.name}"? This action cannot be undone.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <DialogFooter className="gap-2 sm:gap-0">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setIsDialogOpen(false)}
-                                disabled={deleteProductMutation.isPending}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="destructive"
-                                onClick={handleDeleteConfirm}
-                                disabled={deleteProductMutation.isPending}
-                            >
-                                {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <button 
+                    className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#ff000020] hover:border-red-200 transition-colors cursor-pointer"
+                    onClick={() => setIsDialogOpen(true)}
+                >
+                    <Trash2 width={16} className="text-red-600" />
+                </button>
+                
+                <DeleteConfirmationModal
+                    isOpen={isDialogOpen}
+                    onClose={() => setIsDialogOpen(false)}
+                    onConfirm={handleDeleteConfirm}
+                    title="Delete Product"
+                    itemName={product.name}
+                    isLoading={deleteProductMutation.isPending}
+                    loadingText="Deleting..."
+                />
             </div>
         </div>
     )

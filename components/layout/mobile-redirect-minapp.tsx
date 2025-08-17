@@ -3,15 +3,14 @@ import React from "react";
 import { Button } from "../ui";
 import { ArrowUpRight } from "lucide-react";
 
-const DesktopLayout = () => {
+const MobileRedirectMinapp = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="flex flex-col items-center justify-center gap-15 z-50">
         <div className="font-awesome flex flex-col items-center gap-2">
-          <p className="text-3xl text-[#00000066]">
-            Desktop version coming soon
+          <p className="text-2xl text-center">
+            Please open this app in Farcaster
           </p>
-          <p className="text-5xl ">Please open this app in Farcaster</p>
         </div>
         <Button
           size="lg"
@@ -56,4 +55,4 @@ const DesktopLayout = () => {
   );
 };
 
-export default DesktopLayout;
+export default MobileRedirectMinapp;

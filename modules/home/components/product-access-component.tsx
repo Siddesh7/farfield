@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, Skeleton } from '@/components/ui';
 import { CirclePlus, Download, ShoppingCart, CreditCard, Trash2, Check } from 'lucide-react';
+import { DeleteConfirmationModal } from './delete-confirmation-modal';
 import { useGlobalContext } from '@/context/global-context';
 import { Product } from '@/lib/types/product';
 import { toast } from "sonner";
@@ -11,7 +12,7 @@ import { useDeleteProduct } from '@/query/use-delete-product';
 import { usePurchaseConfirm } from '@/query/use-purchase-confirm';
 import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
 import { useAccount, useSendTransaction } from 'wagmi';
-import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS } from '@/lib/blockchain';
+import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { wagmiConfig } from '@/config';
 import JSZip from 'jszip';
@@ -111,6 +112,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             to: approvalTx.to as `0x${string}`,
             data: approvalTx.data,
             value: BigInt(0),
+            chainId: CHAIN_ID
           });
         }
       }
@@ -460,44 +462,16 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
         {/* Show delete button if user is the creator */}
         {data.isCreator && (
           <div className="space-y-2">
-            {!showDeleteConfirm ? (
-              <Button
-                size='lg'
-                variant="destructive"
-                className="w-full font-semibold"
-                onClick={handleDeleteClick}
-                disabled={deleteProductMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete/Remove Product
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <div className="text-center text-sm text-red-600 font-medium">
-                  Are you sure you want to delete this product? This action cannot be undone.
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size='sm'
-                    variant="outline"
-                    className="flex-1"
-                    onClick={handleDeleteCancel}
-                    disabled={deleteProductMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    size='sm'
-                    variant="destructive"
-                    className="flex-1"
-                    onClick={handleDeleteConfirm}
-                    disabled={deleteProductMutation.isPending}
-                  >
-                    {deleteProductMutation.isPending ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </div>
-              </div>
-            )}
+            <Button
+              size='lg'
+              variant="destructive"
+              className="w-full font-semibold"
+              onClick={handleDeleteClick}
+              disabled={deleteProductMutation.isPending}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
           </div>
         )}
 
@@ -538,6 +512,18 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             )}
           </>
         )}
+        
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmationModal
+          isOpen={showDeleteConfirm}
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Product"
+          description="This action cannot be undone. All sales data and customer access will be permanently removed."
+          itemName={product.name}
+          isLoading={deleteProductMutation.isPending}
+          loadingText="Deleting product..."
+        />
       </div>
     );
   }

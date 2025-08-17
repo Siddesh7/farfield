@@ -1,7 +1,7 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniApp } from "@/providers/provider";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import frameSdk from "@farcaster/frame-sdk";
 import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
 import BottomNavigation from "@/components/layout/bottom-navigation";
@@ -14,14 +14,15 @@ import {
 } from "@/components/layout";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import BodySection from "@/components/layout/body-section";
-
+import { sdk } from "@farcaster/frame-sdk";
+import MobileRedirectMinapp from "@/components/layout/mobile-redirect-minapp";
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
   const { isSDKLoaded } = useMiniApp();
   const { initLoginToFrame, loginToFrame } = useLoginToFrame();
   const { post } = useAuthenticatedAPI();
   const { execute: registerUser } = useApiState();
-
+  const [isMiniApp, setIsMiniApp] = useState(false);
   // Track if we've already attempted to register the current user
   const registeredUserIdRef = useRef<string | null>(null);
 
@@ -89,6 +90,13 @@ export default function Home() {
     handleFrameLogin();
   }, [handleFrameLogin]);
 
+  useEffect(() => {
+    const checkMiniApp = async () => {
+      const isMiniApp = await sdk.isInMiniApp();
+      setIsMiniApp(isMiniApp);
+    };
+    checkMiniApp();
+  }, []);
   // Clear registered user ID when user logs out
   useEffect(() => {
     if (!authenticated) {
@@ -100,6 +108,10 @@ export default function Home() {
 
   if (!isMobile) {
     return <DesktopLayout />;
+  }
+
+  if (!isMiniApp) {
+    return <MobileRedirectMinapp />;
   }
 
   if (!ready || !isSDKLoaded) {
