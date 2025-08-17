@@ -38,7 +38,6 @@ const HomeComponent: FC<HomeComponentProps> = ({
             const isNearBottom = scrollTop + clientHeight >= scrollHeight - 200;
             
             if (isNearBottom && !loadingMore && !isLoading && products.length > 0) {
-                console.log('Loading next page...'); // Debug log
                 loadNextPage();
             }
         };

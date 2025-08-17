@@ -23,12 +23,8 @@ export function useDeleteProduct() {
             }
         },
         onSuccess: (data, productId) => {
-            // Invalidate and refetch all relevant queries
             queryClient.invalidateQueries({ queryKey: ["my-products"] });
-            queryClient.invalidateQueries({ queryKey: ["products"] }); // This will invalidate all variations
-            queryClient.invalidateQueries({ queryKey: ["product", productId] });
-            queryClient.invalidateQueries({ queryKey: ["product-access", productId] });
-            
+            queryClient.invalidateQueries({ queryKey: ["products"] });
             toast.success("Product deleted successfully");
         },
         onError: (error: Error) => {

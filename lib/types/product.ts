@@ -1,9 +1,27 @@
 // Comment types
 export type Commentor = {
-  fid: number;
-  name: string;
-  username: string;
-  pfp: string;
+  farcaster: {
+    ownerAddress: string;
+    displayName: string;
+    username: string;
+    pfp: string;
+  };
+  isVerified: boolean;
+  _id: string;
+  farcasterFid: number;
+  wallets: Array<{
+    address: string;
+    chainType: string;
+    walletClientType: string;
+    connectorType: string;
+    isPrimary: boolean;
+    _id: string;
+    id: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+  id: string;
 };
 
 export type Comment = {
