@@ -26,9 +26,15 @@ async function uploadHandler(request: Request) {
     }
 
     // Optional: Add file size limit (e.g., 10MB)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+
+
+    // Dynamic file size limit based on file type
+    const isAudioVideo = file.type.startsWith('audio/') || file.type.startsWith('video/');
+    const maxSize = isAudioVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB for audio/video, 10MB for others
+
     if (file.size > maxSize) {
-      return ApiResponseBuilder.error("File size exceeds 10MB limit", 400);
+      const limitText = isAudioVideo ? "100MB" : "10MB";
+      return ApiResponseBuilder.error(`File size exceeds ${limitText} limit`, 400);
     }
 
     // Optional: Validate file type
@@ -40,12 +46,23 @@ async function uploadHandler(request: Request) {
       "application/pdf",
       "text/plain",
       "application/json",
+      // Audio formats
+      "audio/mpeg",      // .mp3
+      "audio/wav",       // .wav
+      "audio/mp4",       // .m4a
+      "audio/aac",       // .aac
+      "audio/ogg",       // .ogg
+      "audio/webm",      // .webm audio
+      // Video formats
+      "video/mp4",       // .mp4
+      "video/webm",      // .webm
+      "video/quicktime", // .mov
+      "video/x-msvideo", // .avi
     ];
 
     if (!allowedTypes.includes(file.type)) {
       return ApiResponseBuilder.error(
-        `File type ${
-          file.type
+        `File type ${file.type
         } is not allowed. Allowed types: ${allowedTypes.join(", ")}`,
         400
       );
