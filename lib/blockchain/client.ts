@@ -8,7 +8,7 @@ import {
 } from "viem";
 import { baseSepolia } from "viem/chains";
 import {
-  BASE_SEPOLIA_RPC_URL,
+  BASE_RPC_URL,
   FARFIELD_CONTRACT_ADDRESS,
   USDC_CONTRACT_ADDRESS,
   FARFIELD_ABI,
@@ -18,7 +18,7 @@ import {
 // Public client for reading blockchain data
 export const publicClient = createPublicClient({
   chain: baseSepolia,
-  transport: http(BASE_SEPOLIA_RPC_URL),
+  transport: http(BASE_RPC_URL),
 });
 
 // Utility functions for USDC conversions
@@ -45,7 +45,7 @@ export const farfieldContract = {
   async calculatePurchaseCost(productPrices: bigint[]) {
     try {
       const result = await publicClient.readContract({
-        address: FARFIELD_CONTRACT_ADDRESS,
+        address: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         abi: FARFIELD_ABI,
         functionName: "calculatePurchaseCost",
         args: [productPrices],
@@ -65,7 +65,7 @@ export const farfieldContract = {
   async verifyPurchase(purchaseId: string) {
     try {
       const result = await publicClient.readContract({
-        address: FARFIELD_CONTRACT_ADDRESS,
+        address: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         abi: FARFIELD_ABI,
         functionName: "verifyPurchase",
         args: [purchaseId],
@@ -97,7 +97,7 @@ export const farfieldContract = {
       });
 
       return {
-        to: FARFIELD_CONTRACT_ADDRESS,
+        to: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         data,
         value: "0x0", // No ETH value needed for USDC transactions
       };
@@ -113,7 +113,7 @@ export const usdcContract = {
   async getBalance(address: `0x${string}`) {
     try {
       const balance = await publicClient.readContract({
-        address: USDC_CONTRACT_ADDRESS,
+        address: USDC_CONTRACT_ADDRESS as `0x${string}`,
         abi: USDC_ABI,
         functionName: "balanceOf",
         args: [address],
@@ -129,7 +129,7 @@ export const usdcContract = {
   async getAllowance(owner: `0x${string}`, spender: `0x${string}`) {
     try {
       const allowance = await publicClient.readContract({
-        address: USDC_CONTRACT_ADDRESS,
+        address: USDC_CONTRACT_ADDRESS as `0x${string}`,
         abi: USDC_ABI,
         functionName: "allowance",
         args: [owner, spender],
@@ -162,7 +162,7 @@ export const usdcContract = {
       });
 
       return {
-        to: USDC_CONTRACT_ADDRESS,
+        to: USDC_CONTRACT_ADDRESS as `0x${string}`,
         data,
         value: "0x0",
       };
