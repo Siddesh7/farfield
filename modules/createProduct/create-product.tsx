@@ -51,10 +51,10 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     const [uploadingProductFile, setUploadingProductFile] = useState(false);
 
 
-    const handleFormVariableChange = (name: keyof CreateProductFormVariables, value: string | boolean | null) => {
+    const handleFormVariableChange = (name: keyof CreateProductFormVariables, value: string | number | boolean | null) => {
         setFormVariables(prev => ({ 
             ...prev, 
-            [name]: name === 'price' ? (value === '' ? 0 : Number(value)) : value 
+            [name]: name === 'price' ? (typeof value === 'number' ? value : (value === '' ? 0 : Number(value))) : value 
         }));
     };
 

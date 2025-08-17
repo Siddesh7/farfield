@@ -21,7 +21,7 @@ const USDC_LOGO = "/USDC.jpg";
 
 interface AddProductFormProps {
     formVariables: CreateProductFormVariables;
-    setFormVariables: (name: keyof CreateProductFormVariables, value: string | boolean | null) => void;
+    setFormVariables: (name: keyof CreateProductFormVariables, value: string | number | boolean | null) => void;
     coverError: string | null;
     setCoverError: (err: string | null) => void;
     fileInputRef: React.RefObject<HTMLInputElement | null>;
@@ -61,18 +61,13 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     const [dropdownWidth, setDropdownWidth] = React.useState<number | undefined>(undefined);
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [isFreeProduct, setIsFreeProduct] = useState(formVariables.price === 0);
+    const [isFreeProduct, setIsFreeProduct] = useState(false); // Independent toggle state
 
     React.useEffect(() => {
         if (dropdownOpen && triggerRef.current) {
             setDropdownWidth(triggerRef.current.offsetWidth);
         }
     }, [dropdownOpen]);
-
-    // Sync isFreeProduct with price changes
-    React.useEffect(() => {
-        setIsFreeProduct(formVariables.price === 0);
-    }, [formVariables.price]);
 
     const truncateName = (name: string, max: number = 15) => {
         if (!name) return '';
@@ -168,6 +163,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                     className='text-sm bg-fade-background'
                 />
                 {errors.name && <span className="text-red-500 text-xs">{errors.name}</span>}
+
             </div>
 
             {/* Description */}
@@ -186,8 +182,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 <div className="text-xs text-muted-foreground text-right">{formVariables.description.length}/250</div>
                 {errors.description && <span className="text-red-500 text-xs">{errors.description}</span>}
             </div>
-
-
 
             {/* Add your product section */}
             <div>
@@ -288,18 +282,28 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 <div className={`flex items-center border rounded px-3 py-1 mt-1 bg-fade-background focus-within:border-[#0000001F] focus-within:ring-2 focus-within:ring-primary/20 transition-colors ${isFreeProduct ? 'opacity-50' : ''}`}>
                     <div className='flex border-r-1 gap-1 items-center'>
                         <Image src={USDC_LOGO} alt="USDC" width={24} height={24} />
-                        <p>USDC </p>
+                        <p className='mr-2'>USDC </p>
                     </div>
                     <Input
                         id="price"
                         type="number"
-                        min="0"
                         step="0.01"
+                        min="0"
                         className="flex-1 bg-transparent outline-none border-none shadow-none text-left focus-visible:ring-0 focus-visible:border-none"
-                        value={formVariables.price === 0 ? '0.00' : formVariables.price.toString()}
-                        onChange={e => setFormVariables('price', e.target.value)}
+                        value={isFreeProduct ? '' : formVariables.price.toString()}
                         placeholder="0.00"
                         disabled={isFreeProduct}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === '' || value === '.') {
+                                setFormVariables('price', 0);
+                            } else {
+                                const numericValue = parseFloat(value);
+                                if (!isNaN(numericValue) && numericValue >= 0) {
+                                    setFormVariables('price', numericValue);
+                                }
+                            }
+                        }}
                     />
                 </div>
                 
@@ -311,14 +315,15 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                         variant="outline"
                         pressed={isFreeProduct}
                         onPressedChange={(pressed) => {
-                            console.log("Toggle pressed:", pressed, "Current isFreeProduct:", isFreeProduct);
                             setIsFreeProduct(pressed);
                             if (pressed) {
                                 // Toggle ON: Set as free product (price = 0)
-                                setFormVariables('price', '0');
+                                setFormVariables('price', 0);
                             } else {
-                                // Toggle OFF: Enable price field for user input
-                                setFormVariables('price', '');
+                                // Toggle OFF: Set a default price if currently 0
+                                if (formVariables.price === 0) {
+                                    setFormVariables('price', 1); // Default to 1 USDC when toggling off free
+                                }
                             }
                         }}
                         className="h-6 w-6 min-w-6 px-0"
