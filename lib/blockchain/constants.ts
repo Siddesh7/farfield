@@ -1,13 +1,14 @@
 // Base Sepolia Network Configuration
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
-export const BASE_SEPOLIA_RPC_URL =
-  process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL;
+export const BASE_RPC_URL =
+  process.env.NEXT_PUBLIC_APP_ENV === "prod"
+    ? process.env.NEXT_PUBLIC_BASE_RPC_URL
+    : process.env.NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL;
 
-// Contract Addresses on Base Sepolia
-export const USDC_CONTRACT_ADDRESS =
-  "0xfE1Cf9c0b43a009Bfc57041f977f4718A031FA6a";
+// Contract Addresses
+export const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_CONTRACT;
 export const FARFIELD_CONTRACT_ADDRESS =
-  "0xAe8b2B4285776DbfD9972E1586F423701C6761B9";
+  process.env.NEXT_PUBLIC_FARFIELD_CONTRACT;
 
 // Farfield Marketplace ABI
 export const FARFIELD_ABI = [

@@ -510,8 +510,27 @@ async function createProductHandler(
     await product.save();
   }
 
+  // Transform product data to include creator info (similar to GET endpoint)
+  const productObj = product.toObject();
+  
+  // Add creator info
+  const creatorInfo = {
+    fid: creatorUser.farcasterFid,
+    name: creatorUser.farcaster.displayName,
+    username: creatorUser.farcaster.username,
+    pfp: creatorUser.farcaster.pfp || null,
+    isVerified: creatorUser.isVerified,
+  };
+  
+  // Remove creatorFid and add creator object
+  const { creatorFid, buyer, ...productWithoutSensitiveData } = productObj;
+  const responseData = {
+    ...productWithoutSensitiveData,
+    creator: creatorInfo,
+  };
+
   return ApiResponseBuilder.success(
-    product.toObject(),
+    responseData,
     shouldPublish
       ? "Product created and published successfully"
       : "Product created successfully",

@@ -24,30 +24,48 @@ export const GlobalContextProvider = ({
   const [activeModule, setActiveModule] = useState<ModulesType>("home");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<Product[]>([]);
+  const [isClient, setIsClient] = useState(false);
 
-  // Load cart from localStorage on mount
+  // Mark as client-side after mount to avoid hydration issues
   useEffect(() => {
-    const storedCart = localStorage.getItem("cart");
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
+    setIsClient(true);
   }, []);
 
-  // Sync cart to localStorage whenever it changes
+  // Load cart from localStorage on mount (client-side only)
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
+    if (!isClient) return;
+
+    try {
+      const storedCart = localStorage.getItem("cart");
+      if (storedCart) {
+        setCart(JSON.parse(storedCart));
+      }
+    } catch (error) {
+      console.error("Error loading cart from localStorage:", error);
+    }
+  }, [isClient]);
+
+  // Sync cart to localStorage whenever it changes (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+
+    try {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    } catch (error) {
+      console.error("Error saving cart to localStorage:", error);
+    }
+  }, [cart, isClient]);
 
   const addToCart = (product: Product) => {
     setCart((prev) => {
       // Prevent duplicates by _id
-      if (prev.some((p) => p._id === product._id)) return prev;
+      if (prev.some((p) => p.id === product.id)) return prev;
       return [...prev, product];
     });
   };
 
   const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((p) => p._id !== productId));
+    setCart((prev) => prev.filter((p) => p.id !== productId));
   };
 
   const value = {

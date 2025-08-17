@@ -4,3 +4,4 @@ export {
   useAuthenticatedFetch,
 } from "./use-authenticated-fetch";
 export { useWalletSync } from "./use-wallet-sync";
+export { useInfiniteScroll } from "./use-infinite-scroll";

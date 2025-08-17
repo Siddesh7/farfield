@@ -15,7 +15,7 @@ export interface IPurchase extends Document {
   status: "pending" | "completed" | "failed" | "expired";
   transactionHash?: string;
   blockchainVerified: boolean;
-  expiresAt: Date;
+  expiresAt?: Date; // Made optional - only for pending purchases
   createdAt: Date;
   completedAt?: Date;
 }
@@ -75,7 +75,7 @@ const PurchaseSchema = new Schema<IPurchase>(
     },
     expiresAt: {
       type: Date,
-      required: true,
+      required: false, // Only required for pending purchases
     },
     completedAt: {
       type: Date,
@@ -86,14 +86,36 @@ const PurchaseSchema = new Schema<IPurchase>(
   }
 );
 
-// Index for cleanup of expired purchases
-PurchaseSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// FIXED: Conditional TTL index that only affects pending purchases
+PurchaseSchema.index(
+  { expiresAt: 1 }, 
+  { 
+    expireAfterSeconds: 0,
+    partialFilterExpression: { status: "pending" }
+  }
+);
 
 // Index for user purchase history
 PurchaseSchema.index({ buyerFid: 1, createdAt: -1 });
 
+// Pre-save hook to ensure TTL safety
+PurchaseSchema.pre('save', function() {
+  // Remove expiresAt for completed/failed purchases
+  if (['completed', 'failed'].includes(this.status)) {
+    this.expiresAt = undefined;
+  }
+  // Ensure pending purchases have expiresAt
+  else if (this.status === 'pending' && !this.expiresAt) {
+    this.expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  }
+});
+
 // Methods
 PurchaseSchema.methods.isExpired = function () {
+  // Only pending purchases can be expired
+  if (this.status !== 'pending' || !this.expiresAt) {
+    return false;
+  }
   return Date.now() > this.expiresAt.getTime();
 };
 
@@ -102,11 +124,15 @@ PurchaseSchema.methods.markCompleted = function (transactionHash: string) {
   this.transactionHash = transactionHash;
   this.blockchainVerified = true;
   this.completedAt = new Date();
+  // CRITICAL FIX: Remove TTL trigger for completed purchases
+  this.expiresAt = undefined;
   return this.save();
 };
 
 PurchaseSchema.methods.markFailed = function (reason?: string) {
   this.status = "failed";
+  // CRITICAL FIX: Remove TTL trigger for failed purchases
+  this.expiresAt = undefined;
   return this.save();
 };
 
@@ -120,6 +146,20 @@ PurchaseSchema.statics.findPendingExpired = function () {
     status: "pending",
     expiresAt: { $lt: new Date() },
   });
+};
+
+// New method to fix existing data
+PurchaseSchema.statics.fixExistingTTL = async function () {
+  const result = await this.updateMany(
+    { 
+      status: { $in: ['completed', 'failed'] },
+      expiresAt: { $exists: true }
+    },
+    { 
+      $unset: { expiresAt: "" } 
+    }
+  );
+  return result;
 };
 
 export const Purchase =

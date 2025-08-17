@@ -88,9 +88,9 @@ contract FarfieldMarketplace is ReentrancyGuard, Ownable, Pausable {
      * @param sellerAddresses Array of seller wallet addresses (must match productPrices length)
      */
     function processPurchase(
-        string memory purchaseId,
-        uint256[] memory productPrices,
-        address[] memory sellerAddresses
+    string memory purchaseId,
+    uint256[] memory productPrices,
+    address[] memory sellerAddresses
     ) 
         external 
         nonReentrant 
@@ -101,23 +101,38 @@ contract FarfieldMarketplace is ReentrancyGuard, Ownable, Pausable {
         require(productPrices.length == sellerAddresses.length, "Farfield: Arrays length mismatch");
         
         uint256 totalBaseAmount = 0;
+        uint256 totalFeeApplicableAmount = 0;
+
         for (uint256 i = 0; i < productPrices.length; i++) {
-            require(productPrices[i] > 0, "Farfield: Product price must be greater than 0");
             require(sellerAddresses[i] != address(0), "Farfield: Invalid seller address");
             totalBaseAmount += productPrices[i];
+
+            // Only add to fee calculation if product has a price
+            if (productPrices[i] > 0) {
+                totalFeeApplicableAmount += productPrices[i];
+            }
         }
         
-        uint256 platformFee = (totalBaseAmount * platformFeePercentage) / 10000;
+        // Platform fee only applies to non-zero priced products
+        uint256 platformFee = (totalFeeApplicableAmount * platformFeePercentage) / 10000;
         
-        require(usdcToken.balanceOf(msg.sender) >= totalBaseAmount, "Farfield: Insufficient USDC balance");
-        require(usdcToken.allowance(msg.sender, address(this)) >= totalBaseAmount, "Farfield: Insufficient USDC allowance");
-        require(usdcToken.transferFrom(msg.sender, address(this), totalBaseAmount), "Farfield: USDC transfer failed");
-        
+        // Payment transfer only if something is being paid
+        if (totalBaseAmount > 0) {
+            require(usdcToken.balanceOf(msg.sender) >= totalBaseAmount, "Farfield: Insufficient USDC balance");
+            require(usdcToken.allowance(msg.sender, address(this)) >= totalBaseAmount, "Farfield: Insufficient USDC allowance");
+            require(usdcToken.transferFrom(msg.sender, address(this), totalBaseAmount), "Farfield: USDC transfer failed");
+        }
+
         uint256[] memory sellerAmounts = new uint256[](productPrices.length);
         for (uint256 i = 0; i < productPrices.length; i++) {
-            uint256 sellerFeeDeduction = (productPrices[i] * platformFeePercentage) / 10000;
-            sellerAmounts[i] = productPrices[i] - sellerFeeDeduction;
+            if (productPrices[i] > 0) {
+                uint256 sellerFeeDeduction = (productPrices[i] * platformFeePercentage) / 10000;
+                sellerAmounts[i] = productPrices[i] - sellerFeeDeduction;
+            } else {
+                sellerAmounts[i] = 0; // No earnings for free products
+            }
         }
+
         purchases[purchaseId] = Purchase({
             purchaseId: purchaseId,
             buyer: msg.sender,
@@ -133,14 +148,19 @@ contract FarfieldMarketplace is ReentrancyGuard, Ownable, Pausable {
         purchaseIdUsed[purchaseId] = true;
         
         for (uint256 i = 0; i < sellerAddresses.length; i++) {
-            sellerInfos[sellerAddresses[i]].totalEarnings += sellerAmounts[i];
-            sellerInfos[sellerAddresses[i]].availableBalance += sellerAmounts[i];
-            sellerInfos[sellerAddresses[i]].totalSales += 1;
+            if (sellerAmounts[i] > 0) {
+                sellerInfos[sellerAddresses[i]].totalEarnings += sellerAmounts[i];
+                sellerInfos[sellerAddresses[i]].availableBalance += sellerAmounts[i];
+                sellerInfos[sellerAddresses[i]].totalSales += 1;
+            }
         }
         
-        totalVolumeProcessed += totalBaseAmount;
-        totalPurchases += 1;
-        
+        if (totalBaseAmount > 0) {
+            totalVolumeProcessed += totalBaseAmount;
+            totalPurchases += 1;
+        }
+
+        // Transfer platform fee only if > 0
         if (platformFee > 0) {
             require(usdcToken.transfer(platformWallet, platformFee), "Farfield: Platform fee transfer failed");
         }

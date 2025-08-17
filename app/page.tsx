@@ -1,35 +1,26 @@
 "use client";
 import { usePrivy } from "@privy-io/react-auth";
 import { useMiniApp } from "@/providers/provider";
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import frameSdk from "@farcaster/frame-sdk";
 import { useLoginToFrame } from "@privy-io/react-auth/farcaster";
-import { LoginPage } from "@/modules/login";
-import { useAccount } from "wagmi";
-import { ProfilePage } from "@/modules/profile";
 import BottomNavigation from "@/components/layout/bottom-navigation";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useApiState } from "@/lib/hooks/use-api-state";
 import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
-import { useWalletSync } from "@/lib/hooks/use-wallet-sync";
-import { DesktopLayout, HeaderSection, LoadingLayout } from "@/components/layout";
-import { useGlobalContext } from "@/context/global-context";
-import { HomePage } from "@/modules/home";
-import { CartPage } from "@/modules/cart";
+import {
+  DesktopLayout,
+  HeaderSection,
+  LoadingLayout,
+} from "@/components/layout";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import BodySection from "@/components/layout/body-section";
 
 export default function Home() {
   const { ready, authenticated, user } = usePrivy();
-  const { isSDKLoaded, isMiniApp } = useMiniApp();
+  const { isSDKLoaded } = useMiniApp();
   const { initLoginToFrame, loginToFrame } = useLoginToFrame();
-  const { isConnected } = useAccount();
   const { post } = useAuthenticatedAPI();
   const { execute: registerUser } = useApiState();
-
-  const { activeModule } = useGlobalContext();
-
-  // Automatically sync wallet changes to user database
-  const walletSync = useWalletSync();
 
   // Track if we've already attempted to register the current user
   const registeredUserIdRef = useRef<string | null>(null);
@@ -108,46 +99,17 @@ export default function Home() {
   const isMobile = useIsMobile();
 
   if (!isMobile) {
-    return (
-      <DesktopLayout />
-    );
+    return <DesktopLayout />;
   }
 
-  if (!ready) {
-    return (
-      <LoadingLayout />
-    );
-  }
-  console.log(user);
-  console.log("Wallet sync status:", walletSync);
-  if (!isSDKLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <LoadingSpinner color="secondary" className="mx-auto mb-4" />
-          <p>Loading Farcaster SDK...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!authenticated) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-        <div className="max-w-md mx-auto">
-          <LoginPage />
-        </div>
-      </div>
-    );
+  if (!ready || !isSDKLoaded) {
+    return <LoadingLayout />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen flex flex-col">
       <HeaderSection />
-      <div className="pb-8 mb-8 flex flex-1 flex-col">
-        {activeModule === 'home' && <HomePage />}
-        {activeModule === 'cart' && <CartPage />}
-      </div>
+      <BodySection />
       <BottomNavigation />
     </div>
   );

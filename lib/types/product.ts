@@ -1,15 +1,27 @@
+// Comment types
+export type Commentor = {
+  fid: number;
+  name: string;
+  username: string;
+  pfp: string;
+};
+
+export type Comment = {
+  _id: string;
+  commentorFid: number;
+  comment: string;
+  createdAt: string;
+  commentor: Commentor;
+};
+
 export type Product = {
-  _id?: string;
+  id: string;
   name: string;
   description: string;
   images: string[];
   price: number;
   ratingsScore: number;
-  comments: {
-    commentorFid: number;
-    comment: string;
-    createdAt: Date;
-  }[];
+  comments: Comment[];
   buyer: {
     fid: number;
     purchasedAt: Date;
@@ -17,12 +29,9 @@ export type Product = {
   buyers?: {
     fid: number;
     purchasedAt: Date;
-    buyer: {
-      fid: number;
-      name: string;
-      username: string;
-      pfp: string | null;
-    } | null;
+    name: string;
+    username: string;
+    pfp: string | null;
   }[];
 
   // Either digitalFiles OR externalLinks
@@ -39,7 +48,13 @@ export type Product = {
   }[];
 
   // Core product info
-  creatorFid: number;
+  creator: {
+    fid: number;
+    name: string;
+    pfp: string;
+    username: string;
+    isVerified?: boolean;
+  };
   slug?: string;
   category: string;
   tags?: string[];
@@ -80,4 +95,79 @@ export type Product = {
     4: number;
     5: number;
   };
+};
+
+
+// Types for the product access response
+export interface ProductAccessResponse {
+  productId: string;
+  productTitle: string;
+  hasAccess: boolean;
+  isCreator: boolean;
+  hasPurchased: boolean;
+  purchaseDetails: {
+    purchaseId: string;
+    purchasedAt: string;
+    pricePaid: number;
+    transactionHash: string;
+  } | null;
+  access: {
+    canDownload: boolean;
+    canView: boolean;
+    canEdit: boolean;
+  };
+  downloadUrls: Array<{
+    fileName: string;
+    url: string;
+    fileSize: number;
+  }> | null;
+  externalLinks: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }> | null;
+  previewFiles: Array<{
+    fileName: string;
+    url: string;
+    fileSize: number;
+  }> | null;
+  previewLinks: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }> | null;
+  images: string[];
+  creator: {
+    fid: number;
+    name: string;
+    username: string;
+    pfp: string | null;
+    isSubscribed: boolean;
+    isVerified?: boolean;
+  } | null;
+}
+
+export type CreateProductFormVariables = {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  hasExternalLinks: boolean;
+  images: string[];
+  digitalFiles: Array<{
+      fileName: string;
+      fileUrl: string;
+      fileSize: number;
+  }>;
+  externalLinks: Array<{
+      name: string;
+      url: string;
+      type: string;
+  }>;
+  tags: string[] | string;
+  fileFormat: string[] | string;
+  discountPercentage?: number;
+  coverImageFile: File | null;  // cover image file
+  productFiles: File[]; // product files
+  productLink: string;
 };

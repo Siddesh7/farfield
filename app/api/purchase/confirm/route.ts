@@ -156,6 +156,16 @@ async function confirmPurchaseHandler(
     // Don't fail the purchase confirmation if notifications fail
   }
 
+  
+  // Update totalSold for each purchased product
+  for (const item of purchase.items) {
+    await Product.findByIdAndUpdate(
+      item.productId,
+      { $inc: { totalSold: 1 } },
+      { new: true }
+    );
+  }
+  
   // Prepare response
   const responseData = {
     purchaseId: body.purchaseId,
