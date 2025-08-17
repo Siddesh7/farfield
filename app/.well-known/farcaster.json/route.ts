@@ -30,6 +30,25 @@ export async function GET() {
       homeUrl: appUrl,
       subtitle: "the social store",
     },
+    frame: {
+      name: "Farfield",
+      url: appUrl,
+      description:
+        "Buy and sell digital products from fellow Farcaster users in a crypto-native marketplace built for the community.",
+      imageUrl: `${appUrl}/og.png`,
+      version: "next",
+      primaryCategory: "social",
+      tags: ["social", "warpcast", "community", "friends", "compatibility"],
+      heroImageUrl: `${appUrl}/og.png`,
+      tagline: "the social store",
+      ogTitle: "Farfield",
+      iconUrl: `${appUrl}/icon.png`,
+      splashImageUrl: `${appUrl}/splash.png`,
+      webhookUrl: `${appUrl}/webhookurl`,
+      splashBackgroundColor: "#000000",
+      homeUrl: appUrl,
+      subtitle: "the social store",
+    },
   };
 
   return NextResponse.json(manifest, {
