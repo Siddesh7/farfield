@@ -1,5 +1,8 @@
 // Base Sepolia Network Configuration
-export const BASE_SEPOLIA_CHAIN_ID = 84532;
+export const CHAIN_ID = process.env.NEXT_PUBLIC_APP_ENV === "prod"
+  ? 8453
+  : 84532
+;
 export const BASE_RPC_URL =
   process.env.NEXT_PUBLIC_APP_ENV === "prod"
     ? process.env.NEXT_PUBLIC_BASE_RPC_URL

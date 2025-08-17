@@ -69,7 +69,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <Button
             onClick={handleConfirm}
             disabled={isLoading}
-             className='flex-2'
+             className='flex-2 bg-red-500'
           >
             {isLoading ? (
               <>

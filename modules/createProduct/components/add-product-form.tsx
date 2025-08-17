@@ -19,6 +19,13 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const USDC_LOGO = "/USDC.jpg";
 
+interface FileUploadState {
+    fileName: string;
+    isUploading: boolean;
+    error: string | null;
+    progress?: number;
+}
+
 interface AddProductFormProps {
     formVariables: CreateProductFormVariables;
     setFormVariables: (name: keyof CreateProductFormVariables, value: string | number | boolean | null) => void;
@@ -35,6 +42,7 @@ interface AddProductFormProps {
     onRemoveProductFile: (idx: number) => void;
     uploadingCoverImage: boolean;
     uploadingProductFile: boolean;
+    fileUploadStates: FileUploadState[];
     errors?: { [key: string]: string };
 }
 
@@ -54,6 +62,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     onRemoveProductFile,
     uploadingCoverImage,
     uploadingProductFile,
+    fileUploadStates,
     errors = {},
 }) => {
     // Ref and state for dropdown width
@@ -78,18 +87,18 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
         <form className="flex flex-col gap-6 flex-1 pt-22">
             {/* Cover Image Upload */}
             <div className="flex flex-col gap-2 ">
-                {uploadingCoverImage ? (
-                    <div className="relative w-['-webkit-fill-available'] h-[250px] rounded overflow-hidden border bg-fade-background">
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-                            <div className=" backdrop-blur-sm rounded-lg px-4 py-2 flex flex-col items-center gap-2">
-                                <LoadingSpinner size="md" />
-                                <p className="text-sm text-gray-700">Uploading image...</p>
-                            </div>
-                        </div>
-                    </div>
-                ) : coverImageURL ? (
+                {coverImageURL ? (
                     <div className="relative w-['-webkit-fill-available'] h-[250px] rounded overflow-hidden border">
                         <Image src={coverImageURL} alt="Cover" fill style={{ objectFit: 'cover' }} />
+                        
+                        {/* Subtle upload indicator */}
+                        {uploadingCoverImage && (
+                            <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1">
+                                <LoadingSpinner size="sm" />
+                                <span className="text-white text-xs">Syncing...</span>
+                            </div>
+                        )}
+                        
                         <Button type="button" variant="outline" className="absolute top-2 right-2 z-10" onClick={onRemoveCoverImage}>Remove</Button>
                     </div>
                 ) : (
@@ -227,26 +236,29 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                                 onClick={() => !uploadingProductFile && productFilesInputRef.current?.click()}
                             >
                                 <Upload />
-                                <p>Upload Pdf/png/mp3 </p>
+                                <p>Upload multiple files (PDF, PNG, MP3) </p>
                             </div>
                         )}
                         <input
                             ref={productFilesInputRef}
                             id="productFiles"
                             type="file"
+                            multiple
                             accept="image/*,application/pdf,audio/mp3"
                             className="hidden"
                             onChange={handleProductFilesChange}
                             disabled={uploadingProductFile}
                         />
-                        {/* Show selected files */}
+                        {/* Show successfully uploaded files */}
                         {formVariables.productFiles && formVariables.productFiles.length > 0 && (
-                            <div className="text-xs mt-2">
+                            <div className="text-xs mt-2 space-y-2">
                                 {formVariables.productFiles.map((file, idx) => (
-                                    <div key={idx} className="flex items-center justify-between">
+                                    <div key={`uploaded-${idx}`} className="flex items-center justify-between p-2 bg-green-50 rounded border border-green-200">
                                         <div className='flex gap-2 items-center'>
-                                            <Files />
-                                            <span title={file.name}>{truncateName(file.name, 15)} ({(file.size / 1024 < 1024 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / (1024 * 1024)).toFixed(2) + ' MB')})</span>
+                                            <Files className="text-green-600" />
+                                            <span title={file.name} className="text-green-800">
+                                                {truncateName(file.name, 15)} ({(file.size / 1024 < 1024 ? (file.size / 1024).toFixed(1) + ' KB' : (file.size / (1024 * 1024)).toFixed(2) + ' MB')})
+                                            </span>
                                         </div>
                                         <Button
                                             type="button"

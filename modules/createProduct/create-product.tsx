@@ -49,6 +49,15 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
     // for product file
     const productFilesInputRef = useRef<HTMLInputElement | null>(null);
     const [uploadingProductFile, setUploadingProductFile] = useState(false);
+    
+    // Multiple file upload states
+    interface FileUploadState {
+        fileName: string;
+        isUploading: boolean;
+        error: string | null;
+        progress?: number;
+    }
+    const [fileUploadStates, setFileUploadStates] = useState<FileUploadState[]>([]);
 
 
     const handleFormVariableChange = (name: keyof CreateProductFormVariables, value: string | number | boolean | null) => {
@@ -58,7 +67,7 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
         }));
     };
 
-    // Cover image file handler
+    // Cover image file handler - immediate preview with background upload
     const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -68,70 +77,166 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
             return;
         }
         
-        setUploadingCoverImage(true);
         setCoverError(null);
         
-        const img = new window.Image();
+        // Immediately show the local image preview
         const reader = new FileReader();
-        
-        reader.onload = async (ev) => {
+        reader.onload = (ev) => {
             const target = ev.target as FileReader | null;
             if (target && typeof target.result === 'string') {
-                img.src = target.result;
-                img.onload = async () => {
-                    setCoverImageURL(target.result as string);
-                    
-                    try {
-                        const res = await uploadFile(file);
-                        if (res && res.fileKey) {
-                            setFormVariables(prev => ({ ...prev, images: [res.fileKey], coverImageFile: file }));
-                            toast.success("Cover image uploaded successfully");
-                        }
-                    } catch (err: any) {
-                        toast.error(err.message || "Failed to upload cover image");
-                        setCoverImageURL(null);
-                    } finally {
-                        setUploadingCoverImage(false);
-                    }
-                };
+                setCoverImageURL(target.result);
+                // Store the file immediately for form submission
+                setFormVariables(prev => ({ ...prev, coverImageFile: file }));
             }
         };
         reader.readAsDataURL(file);
+        
+        // Start background upload without blocking UI
+        setUploadingCoverImage(true);
+        
+        // Upload in background
+        uploadFile(file)
+            .then((res) => {
+                if (res && res.fileKey) {
+                    setFormVariables(prev => ({ ...prev, images: [res.fileKey] }));
+                    // Subtle success indication - no intrusive toast
+                    console.log("Cover image uploaded successfully");
+                }
+            })
+            .catch((err: any) => {
+                console.error("Cover image upload failed:", err);
+                setCoverError("Upload failed - will retry when publishing");
+                // Don't remove the preview on upload failure
+            })
+            .finally(() => {
+                setUploadingCoverImage(false);
+            });
     };
 
 
 
-    // Product files handler (multiple)
-    const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    // Validate individual file
+    const validateFile = (file: File): string | null => {
+        const allowedTypes = [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf',
+            'audio/mp3', 'audio/mpeg'
+        ];
         
-        setUploadingProductFile(true);
-        
-        try {
-            const res = await uploadFile(file);
-            if (res && res.fileKey && res.size && res.originalName) {
-                setFormVariables(prev => ({
-                    ...prev,
-                    digitalFiles: [
-                        ...(prev.digitalFiles || []),
-                        {
-                            fileName: res.originalName,
-                            fileUrl: res.fileKey,
-                            fileSize: res.size,
-                        },
-                    ],
-                    productFiles: [...(prev.productFiles || []), file],
-                }));
-                toast.success(`${res.originalName} uploaded successfully`);
-            }
-        } catch (error: any) {
-            toast.error(error.message || "Failed to upload product file");
-        } finally {
-            setUploadingProductFile(false);
+        if (!allowedTypes.includes(file.type)) {
+            return `File "${file.name}" has an unsupported format. Allowed: images, PDF, MP3.`;
         }
         
-        e.target.value = '';
+        return null;
+    };
+
+    // Product files handler (multiple)
+    const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        
+        // Validate all files first
+        const validationErrors: string[] = [];
+        const validFiles: File[] = [];
+        
+        files.forEach(file => {
+            const error = validateFile(file);
+            if (error) {
+                validationErrors.push(error);
+            } else {
+                validFiles.push(file);
+            }
+        });
+        
+        // Show validation errors
+        if (validationErrors.length > 0) {
+            validationErrors.forEach(error => toast.error(error));
+        }
+        
+        if (validFiles.length === 0) {
+            e.target.value = '';
+            return;
+        }
+        
+        // Initialize upload states for valid files
+        const initialStates: FileUploadState[] = validFiles.map(file => ({
+            fileName: file.name,
+            isUploading: true,
+            error: null
+        }));
+        
+        setFileUploadStates(prev => [...prev, ...initialStates]);
+        setUploadingProductFile(true);
+        
+        // Process uploads in parallel
+        const uploadPromises = validFiles.map(async (file, index) => {
+            const stateIndex = fileUploadStates.length + index;
+            
+            try {
+                const res = await uploadFile(file);
+                if (res && res.fileKey && res.size && res.originalName) {
+                    // Update successful upload state
+                    setFileUploadStates(prev => 
+                        prev.map((state, idx) => 
+                            idx === stateIndex 
+                                ? { ...state, isUploading: false, error: null }
+                                : state
+                        )
+                    );
+                    
+                    // Add to form variables
+                    setFormVariables(prev => ({
+                        ...prev,
+                        digitalFiles: [
+                            ...(prev.digitalFiles || []),
+                            {
+                                fileName: res.originalName,
+                                fileUrl: res.fileKey,
+                                fileSize: res.size,
+                            },
+                        ],
+                        productFiles: [...(prev.productFiles || []), file],
+                    }));
+                    
+                    // Remove from upload states after 2 seconds
+                    setTimeout(() => {
+                        setFileUploadStates(prev => prev.filter((_, idx) => idx !== stateIndex));
+                    }, 2000);
+                    
+                    return { success: true, file };
+                } else {
+                    throw new Error('Invalid response from upload service');
+                }
+            } catch (error: any) {
+                const errorMsg = error.message || "Failed to upload file";
+                
+                // Update error state
+                setFileUploadStates(prev => 
+                    prev.map((state, idx) => 
+                        idx === stateIndex 
+                            ? { ...state, isUploading: false, error: errorMsg }
+                            : state
+                    )
+                );
+                
+                toast.error(`${file.name}: ${errorMsg}`);
+                
+                // Remove error state after 5 seconds
+                setTimeout(() => {
+                    setFileUploadStates(prev => prev.filter((_, idx) => idx !== stateIndex));
+                }, 5000);
+                
+                return { success: false, file, error: errorMsg };
+            }
+        });
+        
+        // Wait for all uploads to complete
+        try {
+            await Promise.allSettled(uploadPromises);
+        } finally {
+            setUploadingProductFile(false);
+            e.target.value = '';
+        }
     };
 
     // Product link handler
@@ -158,6 +263,26 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
         e.preventDefault();
         try {
             setCreatingProduct(true);
+            
+            // If cover image upload failed, retry it now
+            let finalImages: string[] = Array.isArray(formVariables.images) ? formVariables.images : [];
+            
+            if (coverError && formVariables.coverImageFile && finalImages.length === 0) {
+                toast.info("Retrying cover image upload...");
+                try {
+                    const res = await uploadFile(formVariables.coverImageFile);
+                    if (res && res.fileKey) {
+                        finalImages = [res.fileKey];
+                        setCoverError(null);
+                        toast.success("Cover image uploaded successfully");
+                    }
+                } catch (err: any) {
+                    toast.error("Cover image upload failed. Please try again.");
+                    setCreatingProduct(false);
+                    return;
+                }
+            }
+            
             const basePayload = {
                 name: formVariables.name,
                 description: formVariables.description,
@@ -166,21 +291,19 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 hasExternalLinks: formVariables.hasExternalLinks
             }
 
-            const images: string[] = Array.isArray(formVariables.images) ? formVariables.images : [];
-
             const digitalFiles: { fileName: string; fileUrl: string; fileSize: number; }[] =
                 !formVariables.hasExternalLinks ? (formVariables.digitalFiles || []) : [];
 
             const payload = formVariables.hasExternalLinks
                 ? {
                     ...basePayload,
-                    images,
+                    images: finalImages,
                     digitalFiles: undefined,
                     externalLinks: formVariables.externalLinks
                 }
                 : {
                     ...basePayload,
-                    images,
+                    images: finalImages,
                     externalLinks: undefined,
                     digitalFiles,
                 };
@@ -264,6 +387,7 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
                 handleProductLinkChange={handleProductLinkChange}
                 uploadingCoverImage={uploadingCoverImage}
                 uploadingProductFile={uploadingProductFile}
+                fileUploadStates={fileUploadStates}
                 onRemoveCoverImage={() => {
                     setCoverImageURL(null);
                     setFormVariables(prev => ({ ...prev, images: [], coverImageFile: null }));

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { useSendTransaction, useAccount, useReadContract } from "wagmi";
 import { encodeFunctionData } from "viem";
 import {
+  CHAIN_ID,
   FARFIELD_ABI,
   FARFIELD_CONTRACT_ADDRESS,
   usdcUtils,
@@ -84,6 +85,7 @@ const ProfilePage: FC<ProfilePageProps> = ({
         to: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         data,
         value: BigInt(0),
+        chainId: CHAIN_ID
       });
 
       console.log("Transaction Hash:", hash);

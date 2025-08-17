@@ -9,7 +9,7 @@ import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
 import { usePurchaseConfirm } from '@/query';
 import { toast } from 'sonner';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS } from '@/lib/blockchain';
+import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
 import { Check } from 'lucide-react';
 import { WalletIcon, FileIcon, SwapIcon } from '@/components/icons';
 import { wagmiConfig } from '@/config';
@@ -97,6 +97,7 @@ const CartPage = () => {
                     to: approvalTx.to as `0x${string}`,
                     data: approvalTx.data,
                     value: BigInt(0),
+                    chainId: CHAIN_ID
                 });
             }
             

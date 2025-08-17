@@ -11,13 +11,16 @@ const BoughtProductItem = ({
 }) => {
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-    const handleArrowClick = () => {
+    const handleProductClick = () => {
         setIsDrawerOpen(true);
     };
 
     return (
         <>
-            <div className='py-5 border-b flex justify-between items-center'>
+            <div 
+                className='py-5 border-b flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors duration-200 rounded-lg px-2 -mx-2'
+                onClick={handleProductClick}
+            >
                 <div className='flex gap-3 items-center'>
                     <div className="relative h-[40px] w-[40px]">
                         <img
@@ -38,12 +41,9 @@ const BoughtProductItem = ({
                     <p className='text-lg font-medium'>
                         {product.price === 0 ? 'Free' : `$${product.price}`}
                     </p>
-                    <button 
-                        className="border border-[#0000000A] bg-[#0000000A] rounded-sm p-1 hover:bg-[#0000001A] transition-colors cursor-pointer"
-                        onClick={handleArrowClick}
-                    >
+                    <div className="opacity-60">
                         <ArrowRightUpIcon width={16} />
-                    </button>
+                    </div>
                 </div>
             </div>
             

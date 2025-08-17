@@ -12,7 +12,7 @@ import { useDeleteProduct } from '@/query/use-delete-product';
 import { usePurchaseConfirm } from '@/query/use-purchase-confirm';
 import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
 import { useAccount, useSendTransaction } from 'wagmi';
-import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS } from '@/lib/blockchain';
+import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { wagmiConfig } from '@/config';
 import JSZip from 'jszip';
@@ -112,6 +112,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             to: approvalTx.to as `0x${string}`,
             data: approvalTx.data,
             value: BigInt(0),
+            chainId: CHAIN_ID
           });
         }
       }
