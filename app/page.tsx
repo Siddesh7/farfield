@@ -110,9 +110,9 @@ export default function Home() {
     return <DesktopLayout />;
   }
 
-  if (!isMiniApp) {
-    return <MobileRedirectMinapp />;
-  }
+  // if (!isMiniApp) {
+  //   return <MobileRedirectMinapp />;
+  // }
 
   if (!ready || !isSDKLoaded) {
     return <LoadingLayout />;

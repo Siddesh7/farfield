@@ -14,8 +14,8 @@ import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { wagmiConfig } from '@/config';
-import JSZip from 'jszip';
+import { BASE_URL, wagmiConfig } from '@/config';
+import { useMiniApp } from '@/providers/provider';
 
 interface ProductAccessComponentProps {
   product: Product
@@ -32,6 +32,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   const deleteProductMutation = useDeleteProduct();
   const purchaseConfirmMutation = usePurchaseConfirm();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { actions: sdkActions } = useMiniApp();
   
   // Buy Now state management
   const [loading, setLoading] = useState(false);
@@ -202,61 +203,54 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   };
 
   // Handle download functionality
-  const handleDownload = async (url: string, fileName: string) => {
-    try {
-      const response = await authenticatedFetch(url, { method: 'GET' });
-      if (!response.ok) throw new Error('Download failed');
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-
-      toast.success(`Downloading ${fileName}`);
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Download error:', error);
-    }
-  };
-
-  // Handle download all files functionality (zip when multiple files)
-  const handleDownloadAll = async () => {
+  const handleDownload = () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
       toast.error('No files to download');
       return;
     }
 
-    try {
-      if (data.downloadUrls.length > 1) {
-        const zip = new JSZip();
-        for (const file of data.downloadUrls) {
-          const res = await authenticatedFetch(file.url, { method: 'GET' });
-          if (!res.ok) throw new Error(`Failed to fetch ${file.fileName}`);
-          const arrayBuffer = await res.arrayBuffer();
-          zip.file(file.fileName, arrayBuffer);
-        }
-        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-        const url = window.URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${data.productTitle || 'download'}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Zip download started');
+    const currentUrl = BASE_URL || window.location.origin;
+
+    // For Farcaster mini app, we need to open downloads in a new browser window
+    // because iframe restrictions prevent direct downloads
+    if (data.downloadUrls.length === 1) {
+      // Single file - open directly
+      const downloadUrl = `${currentUrl}${data.downloadUrls[0].url}`;
+      
+      if (sdkActions?.openUrl) {
+        sdkActions.openUrl(downloadUrl);
+        toast.success('Opening download in browser...');
       } else {
-        const file = data.downloadUrls[0];
-        await handleDownload(file.url, file.fileName);
+        try {
+          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+          if (!newWindow) {
+            window.location.href = downloadUrl;
+          }
+          toast.success('Opening download...');
+        } catch (error) {
+          window.location.href = downloadUrl;
+          toast.success('Redirecting to download...');
+        }
       }
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Zip download error:', error);
+    } else {
+      // Multiple files - open each in sequence with small delay
+      data.downloadUrls.forEach((file, index) => {
+        const downloadUrl = `${currentUrl}${file.url}`;
+        
+        setTimeout(() => {
+          if (sdkActions?.openUrl) {
+            sdkActions.openUrl(downloadUrl);
+          } else {
+            try {
+              window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+            } catch (error) {
+              window.location.href = downloadUrl;
+            }
+          }
+        }, index * 1000); // 1 second delay between each download
+      });
+      
+      toast.success(`Opening ${data.downloadUrls.length} files for download...`);
     }
   };
 
@@ -483,7 +477,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                 <Button
                   size='lg'
                   className="w-full font-semibold"
-                  onClick={handleDownloadAll}
+                  onClick={handleDownload}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Download

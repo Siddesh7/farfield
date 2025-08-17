@@ -18,8 +18,8 @@ import { CommentComponent } from '@/modules/home/components/comment-component';
 import { BASE_URL } from '@/config';
 import { toast } from 'sonner';
 import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
-import JSZip from 'jszip';
 import { CopyIcon, DoubleTickIcon, StarIcon } from '@/components/icons';
+import { useMiniApp } from '@/providers/provider';
 
 import Image from 'next/image';
 
@@ -38,6 +38,7 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   const { data: accessData, isLoading: accessLoading } = useProductAccess(productId);
   const { authenticatedFetch } = useAuthenticatedFetch();
   const submitRatingMutation = useSubmitRating();
+  const { actions: sdkActions } = useMiniApp();
 
   // Rating state
   const [selectedRating, setSelectedRating] = useState(0);
@@ -48,65 +49,57 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
 
   // Handle download functionality
-  const handleDownload = async (url: string, fileName: string) => {
-    try {
-      const response = await authenticatedFetch(url, { method: 'GET' });
-      if (!response.ok) throw new Error('Download failed');
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Download error:', error);
-    }
-  };
-
-  // Handle download all files functionality
-  const handleDownloadAll = async () => {
+  const handleDownloadAll = () => {
     if (!accessData?.downloadUrls || accessData.downloadUrls.length === 0) {
       toast.error('No files to download');
       return;
     }
 
-    try {
-      if (accessData.downloadUrls.length > 1) {
-        const zip = new JSZip();
-        for (const file of accessData.downloadUrls) {
-          const res = await authenticatedFetch(file.url, { method: 'GET' });
-          if (!res.ok) throw new Error(`Failed to fetch ${file.fileName}`);
-          const arrayBuffer = await res.arrayBuffer();
-          zip.file(file.fileName, arrayBuffer);
-        }
-        const zipBlob = await zip.generateAsync({
-          type: 'blob',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 }
-        });
-        const url = window.URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${product?.name || 'download'}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        setIsDownloaded(true);
+    const currentUrl = BASE_URL || window.location.origin;
+
+    // For Farcaster mini app, we need to open downloads in a new browser window
+    // because iframe restrictions prevent direct downloads
+    if (accessData.downloadUrls.length === 1) {
+      // Single file - open directly
+      const downloadUrl = `${currentUrl}${accessData.downloadUrls[0].url}`;
+      
+      if (sdkActions?.openUrl) {
+        sdkActions.openUrl(downloadUrl);
+        toast.success('Opening download in browser...');
       } else {
-        const file = accessData.downloadUrls[0];
-        await handleDownload(file.url, file.fileName);
-        setIsDownloaded(true);
+        try {
+          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+          if (!newWindow) {
+            window.location.href = downloadUrl;
+          }
+          toast.success('Opening download...');
+        } catch (error) {
+          window.location.href = downloadUrl;
+          toast.success('Redirecting to download...');
+        }
       }
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Zip download error:', error);
+    } else {
+      // Multiple files - open each in sequence with small delay
+      accessData.downloadUrls.forEach((file, index) => {
+        const downloadUrl = `${currentUrl}${file.url}`;
+        
+        setTimeout(() => {
+          if (sdkActions?.openUrl) {
+            sdkActions.openUrl(downloadUrl);
+          } else {
+            try {
+              window.open(downloadUrl, '_blank', 'noopener,noreferrer');
+            } catch (error) {
+              window.location.href = downloadUrl;
+            }
+          }
+        }, index * 1000); // 1 second delay between each download
+      });
+      
+      toast.success(`Opening ${accessData.downloadUrls.length} files for download...`);
     }
+    
+    setIsDownloaded(true);
   };
 
   // Handle external link copy
