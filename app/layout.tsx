@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     title: "the social store",
     description:
       "Buy and sell digital products from fellow Farcaster users. A crypto-native marketplace built for the community.",
-    images: [`${appUrl}/api/og`],
+    images: [`${appUrl}/og.png`],
   },
   other: {
     "fc:frame": JSON.stringify({
