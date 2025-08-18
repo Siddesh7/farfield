@@ -22,6 +22,14 @@ export interface IProduct extends Document {
     fileName: string;
     fileUrl: string;
     fileSize: number;
+    isZip?: boolean;
+    originalFiles?: {
+      name: string;
+      size: number;
+      type: string;
+    }[];
+    originalTotalSize?: number;
+    fileCount?: number;
   }[];
   externalLinks?: {
     name: string;
@@ -89,6 +97,14 @@ const DigitalFileSchema = new Schema({
   fileName: { type: String, required: true },
   fileUrl: { type: String, required: true },
   fileSize: { type: Number, required: true },
+  isZip: { type: Boolean, default: false },
+  originalFiles: [{
+    name: { type: String },
+    size: { type: Number },
+    type: { type: String }
+  }],
+  originalTotalSize: { type: Number },
+  fileCount: { type: Number }
 });
 
 // External links sub-schema

@@ -58,6 +58,14 @@ export type Product = {
     fileName: string;
     fileUrl: string;
     fileSize: number;
+    isZip?: boolean;
+    originalFiles?: {
+      name: string;
+      size: number;
+      type: string;
+    }[];
+    originalTotalSize?: number;
+    fileCount?: number;
   }[];
   externalLinks?: {
     name: string;
@@ -176,6 +184,14 @@ export type CreateProductFormVariables = {
       fileName: string;
       fileUrl: string;
       fileSize: number;
+      isZip?: boolean;
+      originalFiles?: {
+        name: string;
+        size: number;
+        type: string;
+      }[];
+      originalTotalSize?: number;
+      fileCount?: number;
   }>;
   externalLinks: Array<{
       name: string;

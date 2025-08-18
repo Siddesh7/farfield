@@ -9,6 +9,7 @@ import { useGlobalContext } from '@/context/global-context';
 import SuccessModal from './components/success-modal';
 import { CreateProductFormVariables } from '@/lib/types/product';
 import { uploadFile } from '@/lib/utils/upload-file';
+import JSZip from 'jszip';
 
 const defaultFormVariables: CreateProductFormVariables = {
     name: '',
@@ -120,17 +121,19 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
         const allowedTypes = [
             'image/jpeg', 'image/png', 'image/gif', 'image/webp',
             'application/pdf',
-            'audio/mp3', 'audio/mpeg'
+            'audio/mp3', 'audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/webm',
+            'video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo',
+            'application/zip'
         ];
         
         if (!allowedTypes.includes(file.type)) {
-            return `File "${file.name}" has an unsupported format. Allowed: images, PDF, MP3.`;
+            return `File "${file.name}" has an unsupported format. Allowed: images, PDF, audio, video, ZIP.`;
         }
         
         return null;
     };
 
-    // Product files handler (multiple)
+    // Product files handler (multiple) - with zip functionality
     const handleProductFilesChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -158,81 +161,156 @@ const CreateProduct = ({ refetchAllProducts }: { refetchAllProducts: () => void 
             return;
         }
         
-        // Initialize upload states for valid files
-        const initialStates: FileUploadState[] = validFiles.map(file => ({
-            fileName: file.name,
-            isUploading: true,
-            error: null
-        }));
-        
-        setFileUploadStates(prev => [...prev, ...initialStates]);
         setUploadingProductFile(true);
         
-        // Process uploads in parallel
-        const uploadPromises = validFiles.map(async (file, index) => {
-            const stateIndex = fileUploadStates.length + index;
-            
-            try {
-                const res = await uploadFile(file);
-                if (res && res.fileKey && res.size && res.originalName) {
-                    // Update successful upload state
-                    setFileUploadStates(prev => 
-                        prev.map((state, idx) => 
-                            idx === stateIndex 
-                                ? { ...state, isUploading: false, error: null }
-                                : state
-                        )
-                    );
-                    
-                    // Add to form variables
-                    setFormVariables(prev => ({
-                        ...prev,
-                        digitalFiles: [
-                            ...(prev.digitalFiles || []),
-                            {
-                                fileName: res.originalName,
-                                fileUrl: res.fileKey,
-                                fileSize: res.size,
-                            },
-                        ],
-                        productFiles: [...(prev.productFiles || []), file],
-                    }));
-                    
-                    // Remove from upload states after 2 seconds
-                    setTimeout(() => {
-                        setFileUploadStates(prev => prev.filter((_, idx) => idx !== stateIndex));
-                    }, 2000);
-                    
-                    return { success: true, file };
-                } else {
-                    throw new Error('Invalid response from upload service');
-                }
-            } catch (error: any) {
-                const errorMsg = error.message || "Failed to upload file";
-                
-                // Update error state
-                setFileUploadStates(prev => 
-                    prev.map((state, idx) => 
-                        idx === stateIndex 
-                            ? { ...state, isUploading: false, error: errorMsg }
-                            : state
-                    )
-                );
-                
-                toast.error(`${file.name}: ${errorMsg}`);
-                
-                // Remove error state after 5 seconds
-                setTimeout(() => {
-                    setFileUploadStates(prev => prev.filter((_, idx) => idx !== stateIndex));
-                }, 5000);
-                
-                return { success: false, file, error: errorMsg };
-            }
-        });
-        
-        // Wait for all uploads to complete
         try {
-            await Promise.allSettled(uploadPromises);
+            if (validFiles.length === 1) {
+                // Single file - upload normally
+                const file = validFiles[0];
+                
+                setFileUploadStates([{
+                    fileName: file.name,
+                    isUploading: true,
+                    error: null
+                }]);
+                
+                try {
+                    const res = await uploadFile(file);
+                    if (res && res.fileKey && res.size && res.originalName) {
+                        // Update successful upload state
+                        setFileUploadStates(prev => 
+                            prev.map(state => ({ ...state, isUploading: false, error: null }))
+                        );
+                        
+                        // Add to form variables
+                        setFormVariables(prev => ({
+                            ...prev,
+                            digitalFiles: [
+                                ...(prev.digitalFiles || []),
+                                {
+                                    fileName: res.originalName,
+                                    fileUrl: res.fileKey,
+                                    fileSize: res.size,
+                                    isZip: false,
+                                },
+                            ],
+                            productFiles: [...(prev.productFiles || []), file],
+                        }));
+                        
+                        // Remove from upload states after 2 seconds
+                        setTimeout(() => {
+                            setFileUploadStates([]);
+                        }, 2000);
+                        
+                        toast.success(`${file.name} uploaded successfully`);
+                    } else {
+                        throw new Error('Invalid response from upload service');
+                    }
+                } catch (error: any) {
+                    const errorMsg = error.message || "Failed to upload file";
+                    setFileUploadStates(prev => 
+                        prev.map(state => ({ ...state, isUploading: false, error: errorMsg }))
+                    );
+                    toast.error(`${file.name}: ${errorMsg}`);
+                    
+                    // Remove error state after 5 seconds
+                    setTimeout(() => {
+                        setFileUploadStates([]);
+                    }, 5000);
+                }
+            } else {
+                // Multiple files - create zip and upload
+                const zipFileName = `${formVariables.name || 'Product'}_Files.zip`;
+                
+                setFileUploadStates([{
+                    fileName: zipFileName,
+                    isUploading: true,
+                    error: null
+                }]);
+                
+                toast.info(`Creating zip file with ${validFiles.length} files...`);
+                
+                try {
+                    // Create zip file using JSZip
+                    const zip = new JSZip();
+                    
+                    // Add each file to the zip
+                    for (const file of validFiles) {
+                        const arrayBuffer = await file.arrayBuffer();
+                        zip.file(file.name, arrayBuffer);
+                    }
+                    
+                    // Generate the zip file
+                    const zipBlob = await zip.generateAsync({
+                        type: "blob",
+                        compression: "DEFLATE",
+                        compressionOptions: {
+                            level: 6
+                        }
+                    });
+                    
+                    // Create a File object from the zip blob
+                    const zipFile = new File([zipBlob], zipFileName, {
+                        type: "application/zip"
+                    });
+                    
+                    toast.info(`Uploading zip file (${(zipFile.size / (1024 * 1024)).toFixed(2)} MB)...`);
+                    
+                    // Upload the zip file
+                    const res = await uploadFile(zipFile);
+                    if (res && res.fileKey && res.size && res.originalName) {
+                        // Update successful upload state
+                        setFileUploadStates(prev => 
+                            prev.map(state => ({ ...state, isUploading: false, error: null }))
+                        );
+                        
+                        // Calculate total original file size
+                        const totalOriginalSize = validFiles.reduce((sum, file) => sum + file.size, 0);
+                        
+                        // Add to form variables with zip metadata
+                        setFormVariables(prev => ({
+                            ...prev,
+                            digitalFiles: [
+                                ...(prev.digitalFiles || []),
+                                {
+                                    fileName: res.originalName,
+                                    fileUrl: res.fileKey,
+                                    fileSize: res.size,
+                                    isZip: true,
+                                    originalFiles: validFiles.map(file => ({
+                                        name: file.name,
+                                        size: file.size,
+                                        type: file.type
+                                    })),
+                                    originalTotalSize: totalOriginalSize,
+                                    fileCount: validFiles.length,
+                                },
+                            ],
+                            productFiles: [...(prev.productFiles || []), zipFile],
+                        }));
+                        
+                        // Remove from upload states after 2 seconds
+                        setTimeout(() => {
+                            setFileUploadStates([]);
+                        }, 2000);
+                        
+                        toast.success(`Successfully zipped and uploaded ${validFiles.length} files!`);
+                    } else {
+                        throw new Error('Invalid response from upload service');
+                    }
+                } catch (error: any) {
+                    const errorMsg = error.message || "Failed to create or upload zip file";
+                    setFileUploadStates(prev => 
+                        prev.map(state => ({ ...state, isUploading: false, error: errorMsg }))
+                    );
+                    toast.error(`Zip creation failed: ${errorMsg}`);
+                    
+                    // Remove error state after 5 seconds
+                    setTimeout(() => {
+                        setFileUploadStates([]);
+                    }, 5000);
+                }
+            }
         } finally {
             setUploadingProductFile(false);
             e.target.value = '';
