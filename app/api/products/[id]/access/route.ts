@@ -4,6 +4,7 @@ import { Product } from "@/models/product";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, HTTP_STATUS } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { getPresignedUrl } from "@/lib/r2";
 
 interface RouteParams {
   params: {
@@ -64,11 +65,14 @@ async function productAccessHandler(
   let previewLinks = null;
   if (hasAccess) {
     if (product.digitalFiles && product.digitalFiles.length > 0) {
-      downloadUrls = product.digitalFiles.map((file: any) => ({
-        fileName: file.fileName,
-        url: `/api/files/${file.fileUrl}`,
-        fileSize: file.fileSize,
-      }));
+      // Generate presigned URLs for authenticated downloads
+      downloadUrls = await Promise.all(
+        product.digitalFiles.map(async (file: any) => ({
+          fileName: file.fileName,
+          url: await getPresignedUrl(file.fileUrl, 3600), // 1 hour expiry
+          fileSize: file.fileSize,
+        }))
+      );
     }
     if (product.externalLinks && product.externalLinks.length > 0) {
       externalLinks = product.externalLinks.map((link: any) => ({
@@ -78,11 +82,14 @@ async function productAccessHandler(
       }));
     }
     if (product.previewFiles && product.previewFiles.length > 0) {
-      previewFiles = product.previewFiles.map((file: any) => ({
-        fileName: file.fileName,
-        url: `/api/files/${file.fileUrl}`,
-        fileSize: file.fileSize,
-      }));
+      // Generate presigned URLs for preview files too
+      previewFiles = await Promise.all(
+        product.previewFiles.map(async (file: any) => ({
+          fileName: file.fileName,
+          url: await getPresignedUrl(file.fileUrl, 3600), // 1 hour expiry
+          fileSize: file.fileSize,
+        }))
+      );
     }
     if (product.previewLinks && product.previewLinks.length > 0) {
       previewLinks = product.previewLinks.map((link: any) => ({

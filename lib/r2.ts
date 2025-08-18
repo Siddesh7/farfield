@@ -1,5 +1,6 @@
 import { S3Client } from "@aws-sdk/client-s3";
 import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "stream";
 
 const r2Client = new S3Client({
@@ -34,4 +35,13 @@ export async function getFileStream(key: string) {
   });
   const response = await r2Client.send(command);
   return response.Body as Readable;
+}
+
+export async function getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET,
+    Key: key,
+  });
+  
+  return await getSignedUrl(r2Client, command, { expiresIn });
 }
