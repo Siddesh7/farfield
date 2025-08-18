@@ -4,6 +4,7 @@ import { Product } from "@/models/product";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, HTTP_STATUS } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { getDownloadPresignedUrl } from "@/lib/r2"; // CHANGED: Import the download function
 
 interface RouteParams {
   params: {
@@ -64,11 +65,17 @@ async function productAccessHandler(
   let previewLinks = null;
   if (hasAccess) {
     if (product.digitalFiles && product.digitalFiles.length > 0) {
-      downloadUrls = product.digitalFiles.map((file: any) => ({
-        fileName: file.fileName,
-        url: `/api/files/${file.fileUrl}`,
-        fileSize: file.fileSize,
-      }));
+      // CHANGED: Generate presigned URLs that force downloads
+      downloadUrls = await Promise.all(
+        product.digitalFiles.map(async (file: any) => ({
+          fileName: file.fileName,
+          url: await getDownloadPresignedUrl(file.fileUrl, {
+            expiresIn: 3600, // 1 hour expiry
+            filename: file.fileName, // Use the actual filename
+          }),
+          fileSize: file.fileSize,
+        }))
+      );
     }
     if (product.externalLinks && product.externalLinks.length > 0) {
       externalLinks = product.externalLinks.map((link: any) => ({
@@ -78,11 +85,17 @@ async function productAccessHandler(
       }));
     }
     if (product.previewFiles && product.previewFiles.length > 0) {
-      previewFiles = product.previewFiles.map((file: any) => ({
-        fileName: file.fileName,
-        url: `/api/files/${file.fileUrl}`,
-        fileSize: file.fileSize,
-      }));
+      // CHANGED: Generate presigned URLs for preview files that also force downloads
+      previewFiles = await Promise.all(
+        product.previewFiles.map(async (file: any) => ({
+          fileName: file.fileName,
+          url: await getDownloadPresignedUrl(file.fileUrl, {
+            expiresIn: 3600, // 1 hour expiry
+            filename: file.fileName,
+          }),
+          fileSize: file.fileSize,
+        }))
+      );
     }
     if (product.previewLinks && product.previewLinks.length > 0) {
       previewLinks = product.previewLinks.map((link: any) => ({

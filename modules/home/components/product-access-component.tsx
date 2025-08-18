@@ -40,6 +40,10 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   const [currentStep, setCurrentStep] = useState(0);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   
+  // Download and copy states
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
+  
   // Step states: 'pending', 'active', 'completed', 'error'
   const [stepStates, setStepStates] = useState<('pending' | 'active' | 'completed' | 'error')[]>([
     'pending', 'pending', 'pending'
@@ -202,65 +206,76 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     }
   };
 
-  // Handle download functionality
-  const handleDownload = () => {
+    // Handle download functionality
+  const handleDownloadAll = () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
-      toast.error('No files to download');
+      toast.error("No files to download");
       return;
     }
 
-    const currentUrl = BASE_URL || window.location.origin;
-
-    // For Farcaster mini app, we need to open downloads in a new browser window
-    // because iframe restrictions prevent direct downloads
     if (data.downloadUrls.length === 1) {
-      // Single file - open directly
-      const downloadUrl = `${currentUrl}${data.downloadUrls[0].url}`;
-      
+      const file = data.downloadUrls[0];
+      const downloadUrl = `${file.url}`;
+
       if (sdkActions?.openUrl) {
         sdkActions.openUrl(downloadUrl);
-        toast.success('Opening download in browser...');
       } else {
-        try {
-          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-          if (!newWindow) {
-            window.location.href = downloadUrl;
-          }
-          toast.success('Opening download...');
-        } catch (error) {
-          window.location.href = downloadUrl;
-          toast.success('Redirecting to download...');
-        }
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = file.fileName || "download";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } else {
-      // Multiple files - open each in sequence with small delay
       data.downloadUrls.forEach((file, index) => {
-        const downloadUrl = `${currentUrl}${file.url}`;
-        
+        const downloadUrl = `${file.url}`;
+
         setTimeout(() => {
           if (sdkActions?.openUrl) {
             sdkActions.openUrl(downloadUrl);
           } else {
-            try {
-              window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-            } catch (error) {
-              window.location.href = downloadUrl;
-            }
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = file.fileName || `download_${index + 1}`;
+            link.target = "_blank";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            
+            link.click();
+            
+            setTimeout(() => {
+              document.body.removeChild(link);
+            }, 100);
+            
           }
-        }, index * 1000); // 1 second delay between each download
+        }, index * 2500);
       });
-      
-      toast.success(`Opening ${data.downloadUrls.length} files for download...`);
+
     }
+
+    setIsDownloaded(true);
   };
 
   // Handle external link copy
-  const handleExternalLink = (url: string, name: string) => {
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success(`${name} link copied to clipboard!`);
-    }).catch(() => {
-      toast.error('Failed to copy link');
-    });
+  const handleExternalLink = (url: string, name: string, index: number) => {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopiedLinks((prev) => new Set(prev).add(index));
+
+        // Reset the copied state after 1 second
+        setTimeout(() => {
+          setCopiedLinks((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+          });
+        }, 1000);
+      })
+      .catch(() => {
+        toast.error("Failed to copy link");
+      });
   };
 
   // Handle delete product
@@ -477,10 +492,20 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                 <Button
                   size='lg'
                   className="w-full font-semibold"
-                  onClick={handleDownload}
+                  onClick={handleDownloadAll}
+                  disabled={isDownloaded}
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
+                  {isDownloaded ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Downloaded
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </>
+                  )}
                 </Button>
               </div>
             )}
@@ -488,20 +513,34 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             {/* External Links */}
             {data.externalLinks && data.externalLinks.length > 0 && (
               <div className="space-y-2">
-                {data.externalLinks.map((link, index) => (
-                  <Button
-                    key={index}
-                    size='lg'
-                    variant="default"
-                    className="w-full font-semibold rounded-xl capitalize"
-                    onClick={() => handleExternalLink(link.url, link.name)}
-                  >
-                    <CopyIcon width={16} />
-                    Copy
-                      <span className='lowercase'>{link.name}</span>
-                    link
-                  </Button>
-                ))}
+                {data.externalLinks.map((link, index) => {
+                  const isCopied = copiedLinks.has(index);
+                  return (
+                    <Button
+                      key={index}
+                      size='lg'
+                      variant="default"
+                      className="w-full font-semibold rounded-xl capitalize"
+                      onClick={() => handleExternalLink(link.url, link.name, index)}
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Copied
+                          <span className="lowercase">{link.type}</span>
+                          link
+                        </>
+                      ) : (
+                        <>
+                          <CopyIcon width={16} />
+                          Copy
+                          <span className="lowercase">{link.type}</span>
+                          link
+                        </>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </>

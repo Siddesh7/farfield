@@ -1,27 +1,27 @@
 "use client";
 
-import React, { FC, useState } from 'react';
+import React, { FC, useState } from "react";
 import {
   Drawer,
   DrawerClose,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-} from '@/components/ui/drawer';
-import { Button } from '@/components/ui';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { ErrorDisplay } from '@/components/ui/error-display';
-import { X, Download, Check } from 'lucide-react';
-import { useGetProductById, useSubmitRating } from '@/query';
-import { useProductAccess } from '@/query/use-product-access';
-import { CommentComponent } from '@/modules/home/components/comment-component';
-import { BASE_URL } from '@/config';
-import { toast } from 'sonner';
-import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
-import { CopyIcon, DoubleTickIcon, StarIcon } from '@/components/icons';
-import { useMiniApp } from '@/providers/provider';
+} from "@/components/ui/drawer";
+import { Button } from "@/components/ui";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorDisplay } from "@/components/ui/error-display";
+import { X, Download, Check } from "lucide-react";
+import { useGetProductById, useSubmitRating } from "@/query";
+import { useProductAccess } from "@/query/use-product-access";
+import { CommentComponent } from "@/modules/home/components/comment-component";
+import { BASE_URL } from "@/config";
+import { toast } from "sonner";
+import { useAuthenticatedFetch } from "@/lib/hooks/use-authenticated-fetch";
+import { CopyIcon, DoubleTickIcon, StarIcon } from "@/components/icons";
+import { useMiniApp } from "@/providers/provider";
 
-import Image from 'next/image';
+import Image from "next/image";
 
 interface ProductDetailDrawerProps {
   isOpen: boolean;
@@ -35,7 +35,8 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   productId,
 }) => {
   const { data: product, isLoading, error } = useGetProductById(productId);
-  const { data: accessData, isLoading: accessLoading } = useProductAccess(productId);
+  const { data: accessData, isLoading: accessLoading } =
+    useProductAccess(productId);
   const { authenticatedFetch } = useAuthenticatedFetch();
   const submitRatingMutation = useSubmitRating();
   const { actions: sdkActions } = useMiniApp();
@@ -43,81 +44,92 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   // Rating state
   const [selectedRating, setSelectedRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
-  
+
   // Download and copy states
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
 
-  // Handle download functionality
+    // Handle download functionality
   const handleDownloadAll = () => {
     if (!accessData?.downloadUrls || accessData.downloadUrls.length === 0) {
-      toast.error('No files to download');
+      toast.error("No files to download");
       return;
     }
 
-    const currentUrl = BASE_URL || window.location.origin;
-
-    // For Farcaster mini app, we need to open downloads in a new browser window
-    // because iframe restrictions prevent direct downloads
     if (accessData.downloadUrls.length === 1) {
-      // Single file - open directly
-      const downloadUrl = `${currentUrl}${accessData.downloadUrls[0].url}`;
-      
+      // Single file - direct download
+      const file = accessData.downloadUrls[0];
+      const downloadUrl = `${file.url}`;
+
       if (sdkActions?.openUrl) {
         sdkActions.openUrl(downloadUrl);
-        toast.success('Opening download in browser...');
+        toast.success("Opening download in browser...");
       } else {
-        try {
-          const newWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-          if (!newWindow) {
-            window.location.href = downloadUrl;
-          }
-          toast.success('Opening download...');
-        } catch (error) {
-          window.location.href = downloadUrl;
-          toast.success('Redirecting to download...');
-        }
+        // Use hidden link with download attribute to force download
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = file.fileName || "download";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Download started...");
       }
     } else {
-      // Multiple files - open each in sequence with small delay
+      // Multiple files - download each with increased delay
       accessData.downloadUrls.forEach((file, index) => {
-        const downloadUrl = `${currentUrl}${file.url}`;
-        
+        const downloadUrl = `${file.url}`;
+
         setTimeout(() => {
           if (sdkActions?.openUrl) {
+            // For mini app, open each in new browser tab
             sdkActions.openUrl(downloadUrl);
           } else {
-            try {
-              window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-            } catch (error) {
-              window.location.href = downloadUrl;
-            }
+            // For regular browser, force download with user interaction simulation
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = file.fileName || `download_${index + 1}`;
+            link.target = "_blank"; // Open in new tab to help with browser restrictions
+            link.style.display = "none";
+            document.body.appendChild(link);
+            
+            // Simulate user click to bypass browser restrictions
+            link.click();
+            
+            // Clean up after a short delay
+            setTimeout(() => {
+              document.body.removeChild(link);
+            }, 100);
           }
-        }, index * 1000); // 1 second delay between each download
+        }, index * 2500); // 2.5 second delay between each download for better browser compatibility
       });
-      
-      toast.success(`Opening ${accessData.downloadUrls.length} files for download...`);
+
+      toast.success(
+        `Starting download of ${accessData.downloadUrls.length} files with 2.5s intervals...`
+      );
     }
-    
+
     setIsDownloaded(true);
   };
 
   // Handle external link copy
   const handleExternalLink = (url: string, name: string, index: number) => {
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedLinks(prev => new Set(prev).add(index));
-      
-      // Reset the copied state after 1 second
-      setTimeout(() => {
-        setCopiedLinks(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(index);
-          return newSet;
-        });
-      }, 1000);
-    }).catch(() => {
-      toast.error('Failed to copy link');
-    });
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopiedLinks((prev) => new Set(prev).add(index));
+
+        // Reset the copied state after 1 second
+        setTimeout(() => {
+          setCopiedLinks((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+          });
+        }, 1000);
+      })
+      .catch(() => {
+        toast.error("Failed to copy link");
+      });
   };
 
   // Handle rating submission
@@ -135,7 +147,7 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
   };
 
   const canDownload = accessData?.hasAccess || accessData?.hasPurchased;
-  
+
   // Show verified icon if the product creator is verified
   const shouldShowVerifiedIcon = product?.creator.isVerified;
 
@@ -169,7 +181,11 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
           ) : error ? (
             <div className="py-8">
               <ErrorDisplay
-                error={error instanceof Error ? error.message : 'Failed to load product'}
+                error={
+                  error instanceof Error
+                    ? error.message
+                    : "Failed to load product"
+                }
               />
             </div>
           ) : !product ? (
@@ -189,22 +205,26 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
 
               {/* Product Title */}
               <div>
-                <h2 className="text-xl font-bold text-gray-900">{product.name}</h2>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {product.name}
+                </h2>
               </div>
 
-              <div className='flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]'>
-                <div className='relative w-5 h-5'>
+              <div className="flex gap-2 bg-fade-background w-max px-1.5 py-1 rounded-md items-center border border-[#0000000A]">
+                <div className="relative w-5 h-5">
                   <img
                     src={product.creator?.pfp}
                     alt={product.creator?.name}
-                    className='rounded-xs object-cover w-full h-full'
+                    className="rounded-xs object-cover w-full h-full"
                   />
                 </div>
-                <p className='p-0 text-sm text-[#000000A3]'>{product.creator.username}</p>
+                <p className="p-0 text-sm text-[#000000A3]">
+                  {product.creator.username}
+                </p>
                 {shouldShowVerifiedIcon && (
                   <Image
                     src="/verified.jpg"
-                    alt='Verified Icon'
+                    alt="Verified Icon"
                     width={16}
                     height={16}
                   />
@@ -214,7 +234,9 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
               {/* Rating Section */}
               {canDownload && !accessData?.isCreator && (
                 <div className="space-y-3 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-[#000000E0] m-0">Liked it? Give it a rating</p>
+                  <p className="text-sm font-semibold text-[#000000E0] m-0">
+                    Liked it? Give it a rating
+                  </p>
                   <div className="flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
@@ -222,11 +244,14 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
                         onClick={() => handleRatingSubmit(star)}
                         onMouseEnter={() => setHoveredRating(star)}
                         onMouseLeave={() => setHoveredRating(0)}
-                        disabled={submitRatingMutation.isPending || selectedRating > 0}
-                        className={`transition-all duration-200 ${submitRatingMutation.isPending || selectedRating > 0
-                            ? 'cursor-not-allowed'
-                            : 'cursor-pointer hover:scale-110'
-                          }`}
+                        disabled={
+                          submitRatingMutation.isPending || selectedRating > 0
+                        }
+                        className={`transition-all duration-200 ${
+                          submitRatingMutation.isPending || selectedRating > 0
+                            ? "cursor-not-allowed"
+                            : "cursor-pointer hover:scale-110"
+                        }`}
                       >
                         <StarIcon
                           width={20}
@@ -278,38 +303,41 @@ const ProductDetailDrawer: FC<ProductDetailDrawerProps> = ({
             )}
 
             {/* External Links */}
-            {accessData?.externalLinks && accessData.externalLinks.length > 0 && (
-              <>
-                {accessData.externalLinks.map((link, index) => {
-                  const isCopied = copiedLinks.has(index);
-                  return (
-                    <Button
-                      key={index}
-                      size="lg"
-                      variant="default"
-                      className="w-full font-semibold"
-                      onClick={() => handleExternalLink(link.url, link.name, index)}
-                    >
-                      {isCopied ? (
-                        <>
-                          <Check className="mr-2 h-4 w-4" />
-                          Copied
-                          <span className='lowercase'>{link.type}</span>
-                          link
-                        </>
-                      ) : (
-                        <>
-                          <CopyIcon width={16} />
-                          Copy
-                          <span className='lowercase'>{link.type}</span>
-                          link
-                        </>
-                      )}
-                    </Button>
-                  );
-                })}
-              </>
-            )}
+            {accessData?.externalLinks &&
+              accessData.externalLinks.length > 0 && (
+                <>
+                  {accessData.externalLinks.map((link, index) => {
+                    const isCopied = copiedLinks.has(index);
+                    return (
+                      <Button
+                        key={index}
+                        size="lg"
+                        variant="default"
+                        className="w-full font-semibold"
+                        onClick={() =>
+                          handleExternalLink(link.url, link.name, index)
+                        }
+                      >
+                        {isCopied ? (
+                          <>
+                            <Check className="mr-2 h-4 w-4" />
+                            Copied
+                            <span className="lowercase">{link.type}</span>
+                            link
+                          </>
+                        ) : (
+                          <>
+                            <CopyIcon width={16} />
+                            Copy
+                            <span className="lowercase">{link.type}</span>
+                            link
+                          </>
+                        )}
+                      </Button>
+                    );
+                  })}
+                </>
+              )}
           </div>
         )}
       </DrawerContent>

@@ -12,6 +12,13 @@ type HomePageProps = {
     setCategory: (category: string) => void;
     loadNextPage: () => void;
     loadingMore: boolean;
+    // Search props
+    onSearch: (query: string) => void;
+    onClearSearch: () => void;
+    isSearching: boolean;
+    searchQuery: string;
+    searchResults: Product[];
+    searchLoading: boolean;
 };
 
 const HomePage: FC<HomePageProps> = ({
@@ -19,7 +26,13 @@ const HomePage: FC<HomePageProps> = ({
     products,
     setCategory,
     loadNextPage,
-    loadingMore
+    loadingMore,
+    onSearch,
+    onClearSearch,
+    isSearching,
+    searchQuery,
+    searchResults,
+    searchLoading,
 }) => {
     const { selectedProduct } = useGlobalContext();
 
@@ -36,6 +49,12 @@ const HomePage: FC<HomePageProps> = ({
                     isLoading={isLoading}
                     loadNextPage={loadNextPage}
                     loadingMore={loadingMore}
+                    onSearch={onSearch}
+                    onClearSearch={onClearSearch}
+                    isSearching={isSearching}
+                    searchQuery={searchQuery}
+                    searchResults={searchResults}
+                    searchLoading={searchLoading}
                 />
             )}
         </BoxContainer>
