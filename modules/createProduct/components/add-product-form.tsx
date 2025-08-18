@@ -243,10 +243,11 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             ref={productFilesInputRef}
                             id="productFiles"
                             type="file"
-                            accept="image/*,application/pdf,audio/*,video/*"
+                            accept="image/*,application/pdf,audio/*,video/*,application/zip"
                             className="hidden"
                             onChange={handleProductFilesChange}
                             disabled={uploadingProductFile}
+                            multiple
                         />
                         {/* Show successfully uploaded files */}
                         {formVariables.productFiles && formVariables.productFiles.length > 0 && (

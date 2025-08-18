@@ -58,6 +58,8 @@ async function uploadHandler(request: Request) {
       "video/webm",      // .webm
       "video/quicktime", // .mov
       "video/x-msvideo", // .avi
+      // Archive formats
+      "application/zip", // .zip files
     ];
 
     if (!allowedTypes.includes(file.type)) {

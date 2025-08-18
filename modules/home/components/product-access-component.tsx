@@ -16,6 +16,7 @@ import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { BASE_URL, wagmiConfig } from '@/config';
 import { useMiniApp } from '@/providers/provider';
+import JSZip from 'jszip';
 
 interface ProductAccessComponentProps {
   product: Product
@@ -42,6 +43,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   
   // Download and copy states
   const [isDownloaded, setIsDownloaded] = useState(false);
+  const [isGeneratingZip, setIsGeneratingZip] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
   
   // Step states: 'pending', 'active', 'completed', 'error'
@@ -207,12 +209,13 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   };
 
     // Handle download functionality
-  const handleDownloadAll = () => {
+  const handleDownloadAll = async () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
       toast.error("No files to download");
       return;
     }
 
+    // If there's only one file, download it directly
     if (data.downloadUrls.length === 1) {
       const file = data.downloadUrls[0];
       const downloadUrl = `${file.url}`;
@@ -228,30 +231,88 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
         document.body.removeChild(link);
       }
     } else {
-      data.downloadUrls.forEach((file, index) => {
-        const downloadUrl = `${file.url}`;
-
-        setTimeout(() => {
-          if (sdkActions?.openUrl) {
-            sdkActions.openUrl(downloadUrl);
-          } else {
-            const link = document.createElement("a");
-            link.href = downloadUrl;
-            link.download = file.fileName || `download_${index + 1}`;
-            link.target = "_blank";
-            link.style.display = "none";
-            document.body.appendChild(link);
+      // For multiple files, create and download a zip on frontend
+      setIsGeneratingZip(true);
+      toast.info("Generating zip file...");
+      
+      try {
+        // Create a new JSZip instance
+        const zip = new JSZip();
+        
+        // Download each file and add to zip
+        const downloadPromises = data.downloadUrls.map(async (file, index) => {
+          try {
+            const response = await fetch(file.url);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch ${file.fileName}`);
+            }
             
-            link.click();
+            const blob = await response.blob();
+            zip.file(file.fileName, blob);
             
-            setTimeout(() => {
-              document.body.removeChild(link);
-            }, 100);
-            
+            return { success: true, fileName: file.fileName };
+          } catch (error) {
+            console.error(`Error downloading file ${file.fileName}:`, error);
+            return { success: false, fileName: file.fileName };
           }
-        }, index * 2500);
-      });
+        });
 
+        // Wait for all files to be downloaded and added to zip
+        const results = await Promise.all(downloadPromises);
+        const failedFiles = results.filter(r => !r.success);
+        
+        if (failedFiles.length > 0) {
+          console.warn('Some files failed to download:', failedFiles);
+          toast.warning(`${failedFiles.length} file(s) could not be added to zip`);
+        }
+
+        // Generate the zip file
+        const zipBlob = await zip.generateAsync({ 
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
+
+        // Create filename for the zip
+        const sanitizedProductName = product.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+        const zipFileName = `${sanitizedProductName}_files.zip`;
+        
+        // Create object URL for the zip
+        const zipUrl = URL.createObjectURL(zipBlob);
+
+        if (sdkActions?.openUrl) {
+          // In mini-app, create download link
+          const link = document.createElement("a");
+          link.href = zipUrl;
+          link.download = zipFileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up the blob URL
+          setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
+        } else {
+          // In browser, open zip in new tab for download
+          const link = document.createElement("a");
+          link.href = zipUrl;
+          link.download = zipFileName;
+          link.target = "_blank";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          // Clean up the blob URL  
+          setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
+        }
+        
+        toast.success("Zip file ready for download!");
+      } catch (error) {
+        console.error('Error creating zip:', error);
+        toast.error("Failed to create zip file");
+        return;
+      } finally {
+        setIsGeneratingZip(false);
+      }
     }
 
     setIsDownloaded(true);
@@ -493,9 +554,14 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                   size='lg'
                   className="w-full font-semibold"
                   onClick={handleDownloadAll}
-                  disabled={isDownloaded}
+                  disabled={isDownloaded || isGeneratingZip}
                 >
-                  {isDownloaded ? (
+                  {isGeneratingZip ? (
+                    <>
+                      <LoadingSpinner size="sm" className="mr-2" />
+                      Creating Zip...
+                    </>
+                  ) : isDownloaded ? (
                     <>
                       <Check className="mr-2 h-4 w-4" />
                       Downloaded
@@ -503,7 +569,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                   ) : (
                     <>
                       <Download className="mr-2 h-4 w-4" />
-                      Download
+                      Download {data.downloadUrls && data.downloadUrls.length > 1 ? 'All (Zip)' : ''}
                     </>
                   )}
                 </Button>
