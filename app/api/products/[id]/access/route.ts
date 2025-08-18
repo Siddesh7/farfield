@@ -4,7 +4,7 @@ import { Product } from "@/models/product";
 import connectDB from "@/lib/db/connect";
 import { ApiResponseBuilder, withErrorHandling, HTTP_STATUS } from "@/lib";
 import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
-import { getPresignedUrl } from "@/lib/r2";
+import { getDownloadPresignedUrl } from "@/lib/r2"; // CHANGED: Import the download function
 
 interface RouteParams {
   params: {
@@ -65,11 +65,14 @@ async function productAccessHandler(
   let previewLinks = null;
   if (hasAccess) {
     if (product.digitalFiles && product.digitalFiles.length > 0) {
-      // Generate presigned URLs for authenticated downloads
+      // CHANGED: Generate presigned URLs that force downloads
       downloadUrls = await Promise.all(
         product.digitalFiles.map(async (file: any) => ({
           fileName: file.fileName,
-          url: await getPresignedUrl(file.fileUrl, 3600), // 1 hour expiry
+          url: await getDownloadPresignedUrl(file.fileUrl, {
+            expiresIn: 3600, // 1 hour expiry
+            filename: file.fileName, // Use the actual filename
+          }),
           fileSize: file.fileSize,
         }))
       );
@@ -82,11 +85,14 @@ async function productAccessHandler(
       }));
     }
     if (product.previewFiles && product.previewFiles.length > 0) {
-      // Generate presigned URLs for preview files too
+      // CHANGED: Generate presigned URLs for preview files that also force downloads
       previewFiles = await Promise.all(
         product.previewFiles.map(async (file: any) => ({
           fileName: file.fileName,
-          url: await getPresignedUrl(file.fileUrl, 3600), // 1 hour expiry
+          url: await getDownloadPresignedUrl(file.fileUrl, {
+            expiresIn: 3600, // 1 hour expiry
+            filename: file.fileName,
+          }),
           fileSize: file.fileSize,
         }))
       );

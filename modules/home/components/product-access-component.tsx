@@ -14,8 +14,8 @@ import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { wagmiConfig } from '@/config';
-import JSZip from 'jszip';
+import { BASE_URL, wagmiConfig } from '@/config';
+import { useMiniApp } from '@/providers/provider';
 
 interface ProductAccessComponentProps {
   product: Product
@@ -32,12 +32,17 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
   const deleteProductMutation = useDeleteProduct();
   const purchaseConfirmMutation = usePurchaseConfirm();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const { actions: sdkActions } = useMiniApp();
   
   // Buy Now state management
   const [loading, setLoading] = useState(false);
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  
+  // Download and copy states
+  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
   
   // Step states: 'pending', 'active', 'completed', 'error'
   const [stepStates, setStepStates] = useState<('pending' | 'active' | 'completed' | 'error')[]>([
@@ -201,72 +206,76 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     }
   };
 
-  // Handle download functionality
-  const handleDownload = async (url: string, fileName: string) => {
-    try {
-      const response = await authenticatedFetch(url, { method: 'GET' });
-      if (!response.ok) throw new Error('Download failed');
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-
-      toast.success(`Downloading ${fileName}`);
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Download error:', error);
-    }
-  };
-
-  // Handle download all files functionality (zip when multiple files)
-  const handleDownloadAll = async () => {
+    // Handle download functionality
+  const handleDownloadAll = () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
-      toast.error('No files to download');
+      toast.error("No files to download");
       return;
     }
 
-    try {
-      if (data.downloadUrls.length > 1) {
-        const zip = new JSZip();
-        for (const file of data.downloadUrls) {
-          const res = await authenticatedFetch(file.url, { method: 'GET' });
-          if (!res.ok) throw new Error(`Failed to fetch ${file.fileName}`);
-          const arrayBuffer = await res.arrayBuffer();
-          zip.file(file.fileName, arrayBuffer);
-        }
-        const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
-        const url = window.URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${data.productTitle || 'download'}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-        toast.success('Zip download started');
+    if (data.downloadUrls.length === 1) {
+      const file = data.downloadUrls[0];
+      const downloadUrl = `${file.url}`;
+
+      if (sdkActions?.openUrl) {
+        sdkActions.openUrl(downloadUrl);
       } else {
-        const file = data.downloadUrls[0];
-        await handleDownload(file.url, file.fileName);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = file.fileName || "download";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
-    } catch (error) {
-      toast.error('Download failed. Please try again.');
-      console.error('Zip download error:', error);
+    } else {
+      data.downloadUrls.forEach((file, index) => {
+        const downloadUrl = `${file.url}`;
+
+        setTimeout(() => {
+          if (sdkActions?.openUrl) {
+            sdkActions.openUrl(downloadUrl);
+          } else {
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = file.fileName || `download_${index + 1}`;
+            link.target = "_blank";
+            link.style.display = "none";
+            document.body.appendChild(link);
+            
+            link.click();
+            
+            setTimeout(() => {
+              document.body.removeChild(link);
+            }, 100);
+            
+          }
+        }, index * 2500);
+      });
+
     }
+
+    setIsDownloaded(true);
   };
 
   // Handle external link copy
-  const handleExternalLink = (url: string, name: string) => {
-    navigator.clipboard.writeText(url).then(() => {
-      toast.success(`${name} link copied to clipboard!`);
-    }).catch(() => {
-      toast.error('Failed to copy link');
-    });
+  const handleExternalLink = (url: string, name: string, index: number) => {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopiedLinks((prev) => new Set(prev).add(index));
+
+        // Reset the copied state after 1 second
+        setTimeout(() => {
+          setCopiedLinks((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(index);
+            return newSet;
+          });
+        }, 1000);
+      })
+      .catch(() => {
+        toast.error("Failed to copy link");
+      });
   };
 
   // Handle delete product
@@ -484,9 +493,19 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                   size='lg'
                   className="w-full font-semibold"
                   onClick={handleDownloadAll}
+                  disabled={isDownloaded}
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
+                  {isDownloaded ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Downloaded
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </>
+                  )}
                 </Button>
               </div>
             )}
@@ -494,20 +513,34 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             {/* External Links */}
             {data.externalLinks && data.externalLinks.length > 0 && (
               <div className="space-y-2">
-                {data.externalLinks.map((link, index) => (
-                  <Button
-                    key={index}
-                    size='lg'
-                    variant="default"
-                    className="w-full font-semibold rounded-xl capitalize"
-                    onClick={() => handleExternalLink(link.url, link.name)}
-                  >
-                    <CopyIcon width={16} />
-                    Copy
-                      <span className='lowercase'>{link.name}</span>
-                    link
-                  </Button>
-                ))}
+                {data.externalLinks.map((link, index) => {
+                  const isCopied = copiedLinks.has(index);
+                  return (
+                    <Button
+                      key={index}
+                      size='lg'
+                      variant="default"
+                      className="w-full font-semibold rounded-xl capitalize"
+                      onClick={() => handleExternalLink(link.url, link.name, index)}
+                    >
+                      {isCopied ? (
+                        <>
+                          <Check className="mr-2 h-4 w-4" />
+                          Copied
+                          <span className="lowercase">{link.type}</span>
+                          link
+                        </>
+                      ) : (
+                        <>
+                          <CopyIcon width={16} />
+                          Copy
+                          <span className="lowercase">{link.type}</span>
+                          link
+                        </>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </>
