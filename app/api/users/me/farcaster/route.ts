@@ -1,21 +1,16 @@
 import { User } from "@/models/user";
-import connectDB from "@/lib/db/connect";
-import {
-  ApiResponseBuilder,
-  withErrorHandling,
-  RequestValidator,
-  API_MESSAGES,
-} from "@/lib";
-import { UserResponse, FarcasterUpdateRequest } from "@/lib/types/user";
-import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { createRoute } from "@/lib";
+import { ApiResponseBuilder, RequestValidator, API_MESSAGES } from "@/lib";
+import { AuthenticatedUser } from "@/lib/auth/privy-auth";
+
+// Use this ONCE per route file
+const route = createRoute();
 
 // PUT /api/users/me/farcaster - Update Farcaster profile
 async function updateFarcasterHandler(
   request: Request,
   authenticatedUser: AuthenticatedUser
 ) {
-  await connectDB();
-
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -23,31 +18,24 @@ async function updateFarcasterHandler(
     return validator.getErrorResponse()!;
   }
 
-  const body: FarcasterUpdateRequest = validator.body;
+  const body = validator.body;
 
-  // Validate update fields
-  if (body.displayName !== undefined) {
-    validator.string(body.displayName, "displayName", 1, 100);
-  }
-
-  if (body.bio !== undefined) {
-    validator.string(body.bio, "bio", 0, 500);
-  }
-
-  if (body.pfp !== undefined) {
-    validator.string(body.pfp, "pfp", 1, 500);
-  }
-
-  // Ensure at least one field is being updated
-  if (
-    body.displayName === undefined &&
-    body.bio === undefined &&
-    body.pfp === undefined
-  ) {
-    return ApiResponseBuilder.error(
-      "At least one field must be provided: displayName, bio, or pfp",
-      400
-    );
+  // Validate farcaster updates
+  if (body.farcaster) {
+    if (body.farcaster.displayName !== undefined) {
+      validator.string(
+        body.farcaster.displayName,
+        "farcaster.displayName",
+        1,
+        100
+      );
+    }
+    if (body.farcaster.bio !== undefined) {
+      validator.string(body.farcaster.bio, "farcaster.bio", 0, 500);
+    }
+    if (body.farcaster.pfp !== undefined) {
+      validator.string(body.farcaster.pfp, "farcaster.pfp", 1, 500);
+    }
   }
 
   if (!validator.isValid()) {
@@ -60,22 +48,22 @@ async function updateFarcasterHandler(
     return ApiResponseBuilder.notFound(API_MESSAGES.USER_NOT_FOUND);
   }
 
-  // Update Farcaster profile fields
-  if (body.displayName !== undefined) {
-    user.farcaster.displayName = body.displayName;
-  }
-
-  if (body.bio !== undefined) {
-    user.farcaster.bio = body.bio;
-  }
-
-  if (body.pfp !== undefined) {
-    user.farcaster.pfp = body.pfp;
+  // Update farcaster profile
+  if (body.farcaster) {
+    if (body.farcaster.displayName !== undefined) {
+      user.farcaster.displayName = body.farcaster.displayName;
+    }
+    if (body.farcaster.bio !== undefined) {
+      user.farcaster.bio = body.farcaster.bio;
+    }
+    if (body.farcaster.pfp !== undefined) {
+      user.farcaster.pfp = body.farcaster.pfp;
+    }
   }
 
   await user.save();
 
-  const userResponse: UserResponse = user.toPublicJSON();
+  const userResponse = user.toPublicJSON();
 
   return ApiResponseBuilder.success(
     userResponse,
@@ -83,5 +71,5 @@ async function updateFarcasterHandler(
   );
 }
 
-// Export route with authentication and error handling
-export const PUT = withErrorHandling(withAuth(updateFarcasterHandler));
+// Automatic middleware wrapping - no withAPI() needed!
+export const PUT = route.protected(updateFarcasterHandler);

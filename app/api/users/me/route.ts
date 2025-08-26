@@ -1,22 +1,18 @@
 import { User } from "@/models/user";
 import { Product } from "@/models/product";
-import connectDB from "@/lib/db/connect";
-import {
-  ApiResponseBuilder,
-  withErrorHandling,
-  RequestValidator,
-  API_MESSAGES,
-} from "@/lib";
+import { createRoute } from "@/lib";
+import { ApiResponseBuilder, RequestValidator, API_MESSAGES } from "@/lib";
 import { UserResponse, UserUpdateRequest } from "@/lib/types/user";
-import { withAuth, AuthenticatedUser } from "@/lib/auth/privy-auth";
+import { AuthenticatedUser } from "@/lib/auth/privy-auth";
+
+// Use this ONCE per route file
+const route = createRoute();
 
 // GET /api/users/me - Get current authenticated user's profile
 async function getMeHandler(
   request: Request,
   authenticatedUser: AuthenticatedUser
 ) {
-  await connectDB();
-
   const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
@@ -28,13 +24,13 @@ async function getMeHandler(
   // Calculate total earned from user's products
   const userProducts = await Product.find({ creatorFid: user.farcasterFid });
   const totalEarned = userProducts.reduce((total, product) => {
-    return total + (product.price * product.totalSold);
+    return total + product.price * product.totalSold;
   }, 0);
 
   // Convert to public response (removes sensitive data)
   const userResponse: UserResponse = {
     ...user.toPublicJSON(),
-    totalEarned
+    totalEarned,
   };
 
   return ApiResponseBuilder.success(
@@ -48,8 +44,6 @@ async function updateMeHandler(
   request: Request,
   authenticatedUser: AuthenticatedUser
 ) {
-  await connectDB();
-
   const privyId = authenticatedUser.privyId;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -115,8 +109,6 @@ async function deleteMeHandler(
   request: Request,
   authenticatedUser: AuthenticatedUser
 ) {
-  await connectDB();
-
   const privyId = authenticatedUser.privyId;
 
   const user = await (User as any).findByPrivyId(privyId);
@@ -133,7 +125,7 @@ async function deleteMeHandler(
   );
 }
 
-// Export routes with authentication and error handling
-export const GET = withErrorHandling(withAuth(getMeHandler));
-export const PUT = withErrorHandling(withAuth(updateMeHandler));
-export const DELETE = withErrorHandling(withAuth(deleteMeHandler));
+// Automatic middleware wrapping - no withAPI() needed!
+export const GET = route.protected(getMeHandler);
+export const PUT = route.protected(updateMeHandler);
+export const DELETE = route.protected(deleteMeHandler);

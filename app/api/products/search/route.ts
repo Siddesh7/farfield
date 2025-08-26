@@ -104,9 +104,9 @@ async function searchProductsHandler(request: Request) {
   if (query.q.trim()) {
     const searchTerm = query.q.trim();
     // Escape special regex characters to prevent injection
-    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const searchRegex = new RegExp(escapedTerm, 'i'); // Case-insensitive
-    
+    const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const searchRegex = new RegExp(escapedTerm, "i"); // Case-insensitive
+
     // Only search in product names
     filter.name = searchRegex;
   }

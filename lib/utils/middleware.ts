@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { ApiResponseBuilder } from "./api-response";
+import { withErrorHandling } from "./api-response";
+import { withAuth } from "../auth/privy-auth";
 
 /**
  * CORS middleware configuration
@@ -237,6 +239,116 @@ export function withApiKey(expectedApiKey?: string) {
 
       return await handler(request, context);
     };
+  };
+}
+
+/**
+ * Route helper that automatically wraps all exports with necessary middleware
+ * Use this ONCE per route file to automatically handle DB + Error handling
+ *
+ * Usage:
+ * const route = createRoute();
+ * export const GET = route.public(getHandler);
+ * export const POST = route.protected(postHandler);
+ * export const PUT = route.protected(updateHandler);
+ */
+export function createRoute() {
+  return {
+    // Public routes (no auth needed)
+    public: (handler: (request: Request, context?: any) => Promise<Response>) =>
+      withErrorHandling(withDatabase(handler)),
+
+    // Protected routes (auth required)
+    protected: (
+      handler: (
+        request: Request,
+        authenticatedUser: any,
+        context?: any
+      ) => Promise<Response>
+    ) => withErrorHandling(withDatabase(withAuth(handler))),
+
+    // Custom composition
+    custom: (handler: (request: Request, context?: any) => Promise<Response>) =>
+      withErrorHandling(withDatabase(handler)),
+  };
+}
+
+/**
+ * Global API wrapper that automatically applies to all routes
+ * No need to write withAPI() everywhere - just export your handlers directly
+ *
+ * Usage:
+ * export const GET = getHandler;        // Auto: DB + Error handling
+ * export const POST = postHandler;      // Auto: DB + Error handling
+ * export const PUT = withAuth(handler); // Auto: DB + Error handling + Auth
+ */
+export function createAPIHandler(
+  handler: (request: Request, context?: any) => Promise<Response>
+) {
+  return withErrorHandling(withDatabase(handler));
+}
+
+/**
+ * Global API wrapper for protected routes
+ * Automatically handles DB + Error handling + Authentication
+ *
+ * Usage:
+ * export const POST = createProtectedHandler(handler);
+ */
+export function createProtectedHandler(
+  handler: (
+    request: Request,
+    authenticatedUser: any,
+    context?: any
+  ) => Promise<Response>
+) {
+  return withErrorHandling(withDatabase(withAuth(handler)));
+}
+
+/**
+ * Comprehensive API middleware that handles:
+ * - Database connection (automatic, no manual connectDB needed)
+ * - Error handling
+ * - Can be composed with withAuth
+ *
+ * Usage:
+ * export const GET = withAPI(handler);                    // Public + DB + Error handling
+ * export const POST = withAPI(withAuth(handler));         // Protected + DB + Error handling
+ */
+export function withAPI(
+  handler: (request: Request, context?: any) => Promise<Response>
+) {
+  return withErrorHandling(withDatabase(handler));
+}
+
+/**
+ * Database connection middleware
+ * Automatically ensures database is connected
+ * No need to call await connectDB() in your handlers
+ */
+export function withDatabase(
+  handler: (request: Request, context?: any) => Promise<Response>
+) {
+  return async (request: Request, context?: any): Promise<Response> => {
+    try {
+      // Import here to avoid circular dependencies
+      const connectDB = (await import("@/lib/db/connect")).default;
+      await connectDB();
+      return handler(request, context);
+    } catch (error) {
+      console.error("Database connection failed:", error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Database connection failed",
+          timestamp: new Date().toISOString(),
+        }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
   };
 }
 

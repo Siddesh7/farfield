@@ -19,6 +19,11 @@ export {
   withLogging,
   withRateLimit,
   withApiKey,
+  withDatabase,
+  withAPI,
+  createAPIHandler,
+  createProtectedHandler,
+  createRoute,
   compose,
 } from "./utils/middleware";
 

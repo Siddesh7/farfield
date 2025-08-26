@@ -1,16 +1,16 @@
-import connectDB from "@/lib/db/connect";
-import { ApiResponseBuilder, withErrorHandling, RequestValidator } from "@/lib";
+import { ApiResponseBuilder, RequestValidator, createRoute } from "@/lib";
 import { SellerAccess } from "@/models/seller-access";
 import { SELLER_INVITE_CODE } from "@/constants";
 import { API_MESSAGES } from "@/lib";
+
+// Use this ONCE per route file
+const route = createRoute();
 
 // GET /api/sellers/[fid] - Check if fid has seller access
 async function getSellerAccessHandler(
   request: Request,
   { params }: { params: Promise<{ fid: string }> }
 ) {
-  await connectDB();
-
   const { fid } = await params;
 
   const validator = new RequestValidator();
@@ -42,8 +42,6 @@ async function postSellerAccessHandler(
   request: Request,
   { params }: { params: Promise<{ fid: string }> }
 ) {
-  await connectDB();
-
   const { fid } = await params;
 
   const validator = await RequestValidator.fromRequest(request);
@@ -88,5 +86,6 @@ async function postSellerAccessHandler(
   );
 }
 
-export const GET = withErrorHandling(getSellerAccessHandler);
-export const POST = withErrorHandling(postSellerAccessHandler);
+// Automatic middleware wrapping - no withAPI() needed!
+export const GET = route.public(getSellerAccessHandler);
+export const POST = route.public(postSellerAccessHandler);

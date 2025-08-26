@@ -130,6 +130,70 @@ const response = await get("/api/users/me");
 
 ## 🗄️ Database Query Patterns
 
+### Database Connection Optimization (NEW)
+
+**❌ OLD PATTERN - Manual DB connection in every handler:**
+
+```typescript
+async function myHandler(request: Request) {
+  await connectDB(); // ❌ This is now redundant
+
+  const result = await someDatabaseOperation();
+  return ApiResponseBuilder.success(result);
+}
+
+export const GET = withErrorHandling(myHandler);
+```
+
+**✅ NEW PATTERN - Automatic DB connection:**
+
+```typescript
+async function myHandler(request: Request) {
+  // No need to call await connectDB() - handled automatically
+
+  const result = await someDatabaseOperation();
+  return ApiResponseBuilder.success(result);
+}
+
+// Public endpoint
+export const GET = withAPI(myHandler);
+
+// Protected endpoint
+export const POST = withAPI(withAuth(myHandler));
+```
+
+**🚀 ULTIMATE PATTERN - Zero repetition:**
+
+```typescript
+// Use this ONCE per route file
+const route = createRoute();
+
+async function getHandler(request: Request) {
+  // No connectDB() needed - handled automatically
+  const result = await someDatabaseOperation();
+  return ApiResponseBuilder.success(result);
+}
+
+async function postHandler(request: Request, authenticatedUser: any) {
+  // No connectDB() needed - handled automatically
+  const result = await someProtectedOperation();
+  return ApiResponseBuilder.success(result);
+}
+
+// Automatic middleware wrapping - no withAPI() needed!
+export const GET = route.public(getHandler);
+export const POST = route.protected(postHandler);
+```
+
+### Migration Benefits
+
+1. **Remove ALL `await connectDB()` calls** from your handlers
+2. **Automatic database connection** - no manual management needed
+3. **Connection caching** - handled efficiently by the middleware
+4. **Cleaner handlers** - focus on business logic, not infrastructure
+5. **Consistent pattern** - all APIs get the same DB + error handling
+6. **Zero repetition** - write route helper once, use everywhere
+
 ### User Model Static Methods
 
 ```typescript
@@ -143,13 +207,15 @@ const user = await(User as any).findByWalletAddress(address);
 ### Database Connection
 
 ```typescript
-// ✅ ALWAYS use default import
-import connectDB from "@/lib/db/connect";
-
+// ❌ DON'T: Manual database connection in every handler
 async function handler(request: Request) {
-  await connectDB();
+  await connectDB(); // This is now handled by withAPI middleware
   // ... rest of handler
 }
+
+// ✅ DO: Use withAPI middleware
+export const GET = withAPI(handler);
+export const POST = withAPI(withAuth(handler));
 ```
 
 ## 📋 Complete Endpoint Template

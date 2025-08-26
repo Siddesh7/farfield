@@ -1,23 +1,18 @@
 import { User } from "@/models/user";
-import connectDB from "@/lib/db/connect";
-import {
-  ApiResponseBuilder,
-  withErrorHandling,
-  RequestValidator,
-  API_MESSAGES,
-} from "@/lib";
-import { UserResponse, UserRegistrationRequest } from "@/lib/types/user";
+import { createRoute } from "@/lib";
+import { ApiResponseBuilder, RequestValidator, API_MESSAGES } from "@/lib";
 
-// POST /api/users/register - Register/create new user
+// Use this ONCE per route file
+const route = createRoute();
+
+// POST /api/users/register - Register/Create new user
 async function registerHandler(request: Request) {
-  await connectDB();
-
   const validator = await RequestValidator.fromRequest(request);
   if (!validator.isValid()) {
     return validator.getErrorResponse()!;
   }
 
-  const body: UserRegistrationRequest = validator.body;
+  const body = validator.body;
 
   // Validate required fields
   validator
@@ -25,9 +20,14 @@ async function registerHandler(request: Request) {
     .string(body.privyId, "privyId", 1, 100)
     .required(body.farcasterFid, "farcasterFid")
     .number(body.farcasterFid, "farcasterFid", 1)
-    .required(body.farcaster, "farcaster");
+    .required(body.farcaster, "farcaster")
+    .required(body.wallet, "wallet");
 
-  // Validate farcaster object
+  if (!validator.isValid()) {
+    return validator.getErrorResponse()!;
+  }
+
+  // Validate farcaster data
   if (body.farcaster) {
     validator
       .required(body.farcaster.ownerAddress, "farcaster.ownerAddress")
@@ -46,31 +46,14 @@ async function registerHandler(request: Request) {
     }
   }
 
-  // Validate wallet object (only address is required)
+  // Validate wallet data
   if (body.wallet) {
     validator
       .required(body.wallet.address, "wallet.address")
       .string(body.wallet.address, "wallet.address", 1, 100);
 
-    // Optional wallet fields
     if (body.wallet.chainType) {
       validator.string(body.wallet.chainType, "wallet.chainType", 1, 50);
-    }
-    if (body.wallet.walletClientType) {
-      validator.string(
-        body.wallet.walletClientType,
-        "wallet.walletClientType",
-        1,
-        50
-      );
-    }
-    if (body.wallet.connectorType) {
-      validator.string(
-        body.wallet.connectorType,
-        "wallet.connectorType",
-        1,
-        50
-      );
     }
   }
 
@@ -78,62 +61,60 @@ async function registerHandler(request: Request) {
     return validator.getErrorResponse()!;
   }
 
-  // Check if user already exists with this privyId
-  const existingUserByPrivy = await (User as any).findByPrivyId(body.privyId);
-  if (existingUserByPrivy) {
+  // Check if user already exists
+  const existingUser = await (User as any).findByPrivyId(body.privyId);
+  if (existingUser) {
     return ApiResponseBuilder.conflict(API_MESSAGES.USER_ALREADY_EXISTS);
   }
 
-  // Check if user already exists with this Farcaster FID
-  const existingUserByFid = await (User as any).findByFarcasterFid(
+  // Check if Farcaster FID already exists
+  const existingFarcasterUser = await (User as any).findByFarcasterFid(
     body.farcasterFid
   );
-  if (existingUserByFid) {
+  if (existingFarcasterUser) {
     return ApiResponseBuilder.conflict(API_MESSAGES.FARCASTER_USER_EXISTS);
   }
 
-  // Check if user already exists with this username
-  const existingUserByUsername = await (User as any).findByUsername(
+  // Check if username already exists
+  const existingUsernameUser = await (User as any).findByUsername(
     body.farcaster.username
   );
-  if (existingUserByUsername) {
+  if (existingUsernameUser) {
     return ApiResponseBuilder.conflict(API_MESSAGES.USERNAME_EXISTS);
   }
 
-  // Check if user already exists with this wallet address (if wallet provided)
-  if (body.wallet) {
-    const existingUserByWallet = await (User as any).findByWalletAddress(
-      body.wallet.address
-    );
-    if (existingUserByWallet) {
-      return ApiResponseBuilder.conflict(API_MESSAGES.WALLET_ADDRESS_EXISTS);
-    }
+  // Check if wallet address already exists
+  const existingWalletUser = await (User as any).findByWalletAddress(
+    body.wallet.address
+  );
+  if (existingWalletUser) {
+    return ApiResponseBuilder.conflict(API_MESSAGES.WALLET_ADDRESS_EXISTS);
   }
 
-  // Create new user data
-  const userData: any = {
+  // Create new user
+  const newUser = new User({
     privyId: body.privyId,
     farcasterFid: body.farcasterFid,
-    farcaster: body.farcaster,
-    wallets: [], // Initialize empty wallets array
-  };
+    farcaster: {
+      ownerAddress: body.farcaster.ownerAddress,
+      displayName: body.farcaster.displayName,
+      username: body.farcaster.username,
+      bio: body.farcaster.bio || "",
+      pfp: body.farcaster.pfp || "",
+    },
+    wallets: [
+      {
+        address: body.wallet.address,
+        chainType: body.wallet.chainType || "ethereum",
+        isPrimary: true,
+      },
+    ],
+    isVerified: false,
+  });
 
-  // Add wallet to array if provided
-  if (body.wallet) {
-    const { address, chainType, walletClientType, connectorType } = body.wallet;
-    userData.wallets.push({
-      address,
-      chainType,
-      walletClientType,
-      connectorType,
-      isPrimary: true, // First wallet is always primary
-    });
-  }
-
-  const newUser = new User(userData);
   await newUser.save();
 
-  const userResponse: UserResponse = newUser.toPublicJSON();
+  const userResponse = newUser.toPublicJSON();
 
   return ApiResponseBuilder.success(
     userResponse,
@@ -142,4 +123,5 @@ async function registerHandler(request: Request) {
   );
 }
 
-export const POST = withErrorHandling(registerHandler);
+// Automatic middleware wrapping - no withAPI() needed!
+export const POST = route.public(registerHandler);
