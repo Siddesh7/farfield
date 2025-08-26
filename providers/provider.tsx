@@ -2,10 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider, createConfig } from "@privy-io/wagmi";
-
-import { base, baseSepolia } from "wagmi/chains";
-import { http } from "wagmi";
+import { WagmiProvider } from "@privy-io/wagmi";
 
 import { sdk } from "@farcaster/frame-sdk";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -117,11 +114,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             config={{
               loginMethods: ["farcaster"],
               appearance: {
-                walletList: [
-                  "detected_ethereum_wallets",
-                  "detected_wallets",
-                  "coinbase_wallet",
-                ],
+                walletList: ["detected_ethereum_wallets"],
               },
             }}
           >
@@ -130,7 +123,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             </QueryClientProvider>
           </PrivyProvider>
         </MiniAppProvider>
-      </GlobalContextProvider> 
+      </GlobalContextProvider>
     </>
   );
 }
