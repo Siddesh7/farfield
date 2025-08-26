@@ -73,6 +73,7 @@ function MiniAppProvider({ children }: { children: React.ReactNode }) {
         }
 
         setIsSDKLoaded(true);
+        await sdk.actions.addMiniApp();
       } catch (error) {
         console.error("Error loading Farcaster SDK:", error);
         setIsSDKLoaded(true);
