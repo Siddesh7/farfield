@@ -12,7 +12,7 @@ const HeaderSection = () => {
 
     return (
 
-        <div className='absolute top-0 z-99 w-full flex justify-between pt-7 px-5 items-center'>
+        <div className='absolute top-0 z-10 w-full flex justify-between pt-7 px-5 items-center'>
 
             {showBackArrow ? <div className='bg-white rounded-xl px-3.5 py-2.5'>
                 <ArrowLeft onClick={() => {

@@ -15,13 +15,13 @@ const ProductCard = ({ product }: { product: Product }) => {
             }}
             className="w-[-webkit-fill-available] flex-shrink-0 flex flex-col gap-3 rounded-lg pb-6 cursor-pointer"
         >
-            <div className="relative w-[-webkit-fill-available] h-[195px] overflow-hidden rounded-sm">
-                <div className="relative w-[-webkit-fill-available] h-[275px]">
-                    <img
+            <div className="relative w-[-webkit-fill-available] overflow-hidden rounded-sm">
+                <div className="relative w-full aspect-square">
+                    <Image
                         src={`${BASE_URL}/api/images/${product.images[0]}`}
                         alt={product.name}
-                        style={{ objectFit: "cover" }}
-                        className="object-cover w-full h-full"
+                        className="object-cover w-full h-full rounded-t-lg"
+                        fill
                     />
                 </div>
                 <div className="absolute top-2 left-2 flex gap-2 bg-white rounded-[4px] px-1.5 py-1 items-center shadow">
