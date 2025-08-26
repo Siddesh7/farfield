@@ -1,15 +1,9 @@
 import React from 'react';
-import { ArrowLeft, WalletMinimal } from 'lucide-react'
-import { useAccount } from 'wagmi';
-import { trimAddress } from '@/lib/utils';
-import { usePrivy } from '@privy-io/react-auth';
-import { Button } from '../ui';
+import { ArrowLeft } from 'lucide-react'
 import { useGlobalContext } from '@/context/global-context';
 import Image from 'next/image';
 
 const HeaderSection = () => {
-    const { linkWallet } = usePrivy();
-    const { address, isConnected } = useAccount();
     const { activeModule, selectedProduct, setActiveModule, setSelectedProduct } = useGlobalContext();
 
     const showBackArrow = selectedProduct && (activeModule === 'home')
@@ -37,24 +31,6 @@ const HeaderSection = () => {
                     )}
                     {activeModule === 'add-product' && 'Add Product'}
                 </h1>
-            )}
-
-            {!isConnected ? (
-                <div className={`rounded-xl ${showBackArrow ? 'bg-white' : 'bg-[#0000000A]'}`}>
-                    <Button
-                        variant="outline"
-                        className={`w-full ${showBackArrow ? 'bg-white' : 'bg-[#0000000A]'}`}
-                        onClick={linkWallet}
-
-                    >
-                        Connect Wallet
-                    </Button>
-                </div>
-            ) : (
-                <div className={`flex px-3 py-2.5  rounded-xl items-center gap-1.5 ${showBackArrow ? 'bg-white' : 'bg-[#0000000A]'} `}>
-                    <WalletMinimal size={16} />
-                    {trimAddress(address, 5)}
-                </div>
             )}
         </div>
     );
