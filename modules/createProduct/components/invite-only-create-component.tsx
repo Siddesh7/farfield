@@ -1,6 +1,9 @@
 import { BoxContainer } from "@/components/common/box-container";
 import { Button } from "@/components/ui";
 import { Input } from "@/components/ui/input";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { useGrantSellerAccess } from "@/query/use-seller-access";
+import { useUserProfile } from "@/query/use-user-profile";
 import React, { useState } from "react";
 
 const InviteCodeComponent = ({
@@ -12,8 +15,10 @@ const InviteCodeComponent = ({
 }) => {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
+  const { data: userProfile } = useUserProfile();
+  const grantSellerAccess = useGrantSellerAccess();
 
-  const handleInviteCode = () => {
+  const handleInviteCode = async () => {
     setError("");
 
     if (!inviteCode.trim()) {
@@ -26,11 +31,26 @@ const InviteCodeComponent = ({
       return;
     }
 
-    setHasInviteCode(true);
+    if (!userProfile?.farcasterFid) {
+      setError("Unable to get your Farcaster ID");
+      return;
+    }
+
+    try {
+      await grantSellerAccess.mutateAsync({
+        fid: userProfile.farcasterFid,
+        code: inviteCode.trim()
+      });
+      
+      // If successful, the seller access query will be invalidated and refetched
+      // The parent component will automatically show the add product form
+    } catch (error: any) {
+      setError(error.message || "Invalid invite code");
+    }
   };
 
   const handleRequestInvite = () => {
-    console.log("Requesting invite");
+    window.open('https://t.me/+torthfG5NCNkY2Nl', '_blank');
   };
 
   return (
@@ -64,9 +84,16 @@ const InviteCodeComponent = ({
           className="rounded-lg min-h-[40px]"
           size="default"
           onClick={handleInviteCode}
-          disabled={!inviteCode.trim()}
+          disabled={!inviteCode.trim() || grantSellerAccess.isPending}
         >
-          Start Selling
+          {grantSellerAccess.isPending ? (
+            <div className="flex gap-1 items-center">
+              <LoadingSpinner size="sm" color="secondary" />
+              Verifying Code...
+            </div>
+          ) : (
+            "Start Selling"
+          )}
         </Button>
       </div>
 
@@ -86,7 +113,7 @@ const InviteCodeComponent = ({
           Want an invite?{" "}
           <span
             onClick={handleRequestInvite}
-            className="underline underline-offset-2 text-black"
+            className="underline underline-offset-2 text-black cursor-pointer"
           >
             {" "}
             Request one here{" "}

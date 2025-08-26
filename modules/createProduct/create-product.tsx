@@ -30,8 +30,10 @@ const defaultFormVariables: CreateProductFormVariables = {
 
 const CreateProduct = ({
   refetchAllProducts,
+  hasSellerAccess = false,
 }: {
   refetchAllProducts: () => void;
+  hasSellerAccess?: boolean;
 }) => {
   const { post } = useAuthenticatedAPI();
   const { setActiveModule, setSelectedProduct } = useGlobalContext();
@@ -162,10 +164,6 @@ const CreateProduct = ({
       "audio/aac",
       "audio/ogg",
       "audio/webm",
-      "video/mp4",
-      "video/webm",
-      "video/quicktime",
-      "video/x-msvideo",
       "application/zip",
     ];
 
@@ -536,10 +534,9 @@ const CreateProduct = ({
     }
   };
 
-  const [hasInviteCode,setHasInviteCode] = useState(true);
-
-  if(hasInviteCode){
-    return <InviteCodeComponent hasInviteCode={hasInviteCode} setHasInviteCode={setHasInviteCode}/>
+  // Show invite code component if user doesn't have seller access
+  if (!hasSellerAccess) {
+    return <InviteCodeComponent hasInviteCode={false} setHasInviteCode={() => {}} />
   }
 
 

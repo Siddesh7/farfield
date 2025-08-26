@@ -4,7 +4,7 @@ import { HomePage } from '@/modules/home';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ProfilePage } from '@/modules/profile';
 import { NotificationsPage } from '@/modules/notifications';
-import { useGetMyProducts, useGetProducts, useGetPurchasedProducts, useSearchProducts } from '@/query';
+import { useGetMyProducts, useGetProducts, useGetPurchasedProducts, useSearchProducts, useSellerAccess, useUserProfile } from '@/query';
 import { useGetProductById } from '@/query/use-get-product-by-id';
 import { CreateProduct } from '@/modules/createProduct';
 import { Product } from '@/lib/types/product';
@@ -22,6 +22,10 @@ const BodySection = () => {
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
+
+    // User profile and seller access
+    const { data: userProfile } = useUserProfile();
+    const { data: sellerAccess, isLoading: loadingSellerAccess } = useSellerAccess(userProfile?.farcasterFid || null);
 
     // Call the regular products query
     const { data: currentPageProducts, isLoading: loadingProducts, error, refetch: refetchAllProducts } = useGetProducts(page, limit, category);
@@ -57,7 +61,7 @@ const BodySection = () => {
     const { data: searchResults = [], isLoading: searchLoading } = useSearchProducts({
         query: searchQuery,
         page: 1,
-        limit: 20, // More results for search
+        limit: 20,
         category: category !== 'All' ? category : undefined,
         enabled: isSearching && !!searchQuery,
     });
@@ -81,7 +85,6 @@ const BodySection = () => {
     React.useEffect(() => {
         setPage(1);
         setLoadingMore(false);
-        // Don't clear allProducts here - let the products effect handle it
     }, [category]);
 
     // Function to load next page
@@ -117,7 +120,7 @@ const BodySection = () => {
         isLoading: loadingPurchasedProducts,
     } = useGetPurchasedProducts({ page: 1, limit: 10 });
 
-    const loadingModules = loadingPurchasedProducts || loadingMyProducts || (loadingProducts && page === 1) || Boolean(productIdFromUrl && loadingSharedProduct);
+    const loadingModules = loadingSellerAccess || loadingPurchasedProducts || loadingMyProducts || (loadingProducts && page === 1) || Boolean(productIdFromUrl && loadingSharedProduct);
 
     return (
         <div className="pb-8 mb-8 flex flex-1 flex-col">
@@ -137,7 +140,12 @@ const BodySection = () => {
                 />
             )}
             {activeModule === 'cart' && <CartPage />}
-            {activeModule === 'add-product' && <CreateProduct refetchAllProducts={refetchAllProducts} />}
+            {activeModule === 'add-product' && (
+                <CreateProduct 
+                    refetchAllProducts={refetchAllProducts} 
+                    hasSellerAccess={sellerAccess?.hasAccess || false}
+                />
+            )}
             {activeModule === 'notifications' && <NotificationsPage />}
             {activeModule === 'profile' && <ProfilePage
                 listedProducts={myProducts}
