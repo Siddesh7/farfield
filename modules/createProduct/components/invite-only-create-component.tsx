@@ -6,13 +6,7 @@ import { useGrantSellerAccess } from "@/query/use-seller-access";
 import { useUserProfile } from "@/query/use-user-profile";
 import React, { useState } from "react";
 
-const InviteCodeComponent = ({
-  hasInviteCode,
-  setHasInviteCode,
-}: {
-  hasInviteCode: boolean;
-  setHasInviteCode: (hasInviteCode: boolean) => void;
-}) => {
+const InviteCodeComponent = () => {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const { data: userProfile } = useUserProfile();

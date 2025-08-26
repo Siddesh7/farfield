@@ -536,7 +536,7 @@ const CreateProduct = ({
 
   // Show invite code component if user doesn't have seller access
   if (!hasSellerAccess) {
-    return <InviteCodeComponent hasInviteCode={false} setHasInviteCode={() => {}} />
+    return <InviteCodeComponent />
   }
 
 
