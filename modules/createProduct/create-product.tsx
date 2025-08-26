@@ -10,6 +10,7 @@ import SuccessModal from "./components/success-modal";
 import { CreateProductFormVariables } from "@/lib/types/product";
 import { uploadFile } from "@/lib/utils/upload-file";
 import JSZip from "jszip";
+import InviteCodeComponent from "./components/invite-only-create-component";
 
 const defaultFormVariables: CreateProductFormVariables = {
   name: "",
@@ -519,6 +520,13 @@ const CreateProduct = ({
       setActiveModule("home");
     }
   };
+
+  const [hasInviteCode,setHasInviteCode] = useState(true);
+
+  if(hasInviteCode){
+    return <InviteCodeComponent hasInviteCode={hasInviteCode} setHasInviteCode={setHasInviteCode}/>
+  }
+
 
   return (
     <BoxContainer className="flex flex-col gap-6 pt-5 px-5.5 flex-1 ">
