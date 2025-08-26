@@ -49,6 +49,12 @@ export const API_MESSAGES = {
   VALIDATION_ERROR: "Validation error",
   DATABASE_ERROR: "Database operation failed",
   FORBIDDEN: "Access forbidden",
+
+  // Seller access messages
+  SELLER_ACCESS_RETRIEVED_SUCCESS: "Seller access retrieved successfully",
+  SELLER_ACCESS_UPDATED_SUCCESS: "Seller access updated successfully",
+  SELLER_ACCESS_GRANTED_SUCCESS: "Seller access granted successfully",
+  INVALID_INVITE_CODE: "Invalid invite code",
 } as const;
 
 export const HTTP_STATUS = {

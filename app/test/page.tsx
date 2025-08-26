@@ -640,6 +640,10 @@ export default function TestPage() {
       await testAddWallet();
       await testRemoveWallet(); // This might fail if it's the last wallet
 
+      // Test seller access endpoints
+      await testGetSellerAccess();
+      await testGrantSellerAccess();
+
       // Test public endpoints
       await testPublicEndpoints();
     } finally {
@@ -703,6 +707,30 @@ export default function TestPage() {
     }
   };
 
+  // ========== SELLER ACCESS API TESTS (NEW) ==========
+
+  // Seller Access Tests
+  const testGetSellerAccess = () => {
+    const fid = user?.farcaster?.fid || 12345;
+    return runTest(
+      "GET /api/sellers/[fid]",
+      () => fetch(`/api/sellers/${fid}`).then((r) => r.json()),
+      "Check if FID has seller access (Public)"
+    );
+  };
+
+  const testGrantSellerAccess = () => {
+    const fid = user?.farcaster?.fid || 12345;
+    return runTest(
+      "POST /api/sellers/[fid]",
+      () =>
+        post(`/api/sellers/${fid}`, {
+          code: "createonchain",
+        }),
+      "Grant seller access with invite code (Public)"
+    );
+  };
+
   // Add these new test functions after the existing product test functions (around line 561)
 
   // Featured Products Tests
@@ -718,7 +746,10 @@ export default function TestPage() {
     const testCategory = "Design"; // Change this to test different categories
     return runTest(
       `GET /api/products/category/${testCategory}/featured`,
-      () => fetch(`/api/products/category/${testCategory}/featured`).then((r) => r.json()),
+      () =>
+        fetch(`/api/products/category/${testCategory}/featured`).then((r) =>
+          r.json()
+        ),
       `Get top 3 featured products in "${testCategory}" category (Public)`
     );
   };
@@ -1791,6 +1822,31 @@ export default function TestPage() {
               </Button>
               <Button onClick={testRegisterUser} disabled={isRunning} size="sm">
                 POST /users/register
+              </Button>
+            </div>
+          </div>
+
+          {/* Seller Access API Individual Tests */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">
+              🔐 Seller Access API Tests
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <Button
+                onClick={testGetSellerAccess}
+                disabled={isRunning}
+                size="sm"
+                variant="outline"
+              >
+                🌍 GET /sellers/[fid]
+              </Button>
+              <Button
+                onClick={testGrantSellerAccess}
+                disabled={isRunning}
+                size="sm"
+                variant="outline"
+              >
+                🌍 POST /sellers/[fid]
               </Button>
             </div>
           </div>
