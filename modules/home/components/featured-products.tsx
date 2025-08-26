@@ -24,11 +24,11 @@ const FeaturedProducts = ({
                     }
                 }}
                 className='max-w-screen h-[200px] overflow-hidden rounded-xl relative cursor-pointer'>
-                <img
+                <Image
                     src={`${BASE_URL}/api/images/${product.images[0]}`}
                     alt={product.name}
-                    style={{objectFit:'cover'}}
                     className="object-cover w-full h-full"
+                    fill
                 />
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

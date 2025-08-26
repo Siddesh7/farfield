@@ -83,7 +83,7 @@ const CreateProduct = ({
     }));
   };
 
-  // Cover image file handler - immediate preview with background upload
+  // Cover image file handler - now handles cropped images
   const handleCoverImageChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -96,18 +96,6 @@ const CreateProduct = ({
     }
 
     setCoverError(null);
-
-    // Immediately show the local image preview
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const target = ev.target as FileReader | null;
-      if (target && typeof target.result === "string") {
-        setCoverImageURL(target.result);
-        // Store the file immediately for form submission
-        setFormVariables((prev) => ({ ...prev, coverImageFile: file }));
-      }
-    };
-    reader.readAsDataURL(file);
 
     // Start background upload without blocking UI
     setUploadingCoverImage(true);
@@ -129,6 +117,33 @@ const CreateProduct = ({
       .finally(() => {
         setUploadingCoverImage(false);
       });
+  };
+
+  // Handle cropped image completion
+  const handleCropComplete = async (croppedImageBlob: Blob) => {
+    // Create a new file from the cropped blob
+    const croppedFile = new File([croppedImageBlob], 'cover-image.jpg', {
+      type: 'image/jpeg',
+    });
+
+    // Store the cropped file for form submission
+    setFormVariables((prev) => ({ ...prev, coverImageFile: croppedFile }));
+
+    // Start background upload of the cropped image
+    setUploadingCoverImage(true);
+
+    try {
+      const res = await uploadFile(croppedFile);
+      if (res && res.fileKey) {
+        setFormVariables((prev) => ({ ...prev, images: [res.fileKey] }));
+        console.log("Cropped cover image uploaded successfully");
+      }
+    } catch (err: any) {
+      console.error("Cropped cover image upload failed:", err);
+      setCoverError("Upload failed - will retry when publishing");
+    } finally {
+      setUploadingCoverImage(false);
+    }
   };
 
   // Validate individual file
@@ -531,6 +546,7 @@ const CreateProduct = ({
         coverImageURL={coverImageURL}
         setCoverImageURL={setCoverImageURL}
         handleImageChange={handleCoverImageChange}
+        onCropComplete={handleCropComplete}
         productFilesInputRef={productFilesInputRef}
         handleProductFilesChange={handleProductFilesChange}
         handleProductLinkChange={handleProductLinkChange}

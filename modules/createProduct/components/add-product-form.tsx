@@ -7,14 +7,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ChevronUp, Files, Plus, Upload, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, Files, Plus, Upload, Check, Crop } from 'lucide-react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
 import { CreateProductFormVariables } from '@/lib/types/product';
 import { PRODUCT_CATEGORIES } from '@/constants';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { LoadingSpinner, ImageCropper } from '@/components/ui';
 
 
 const USDC_LOGO = "/USDC.jpg";
@@ -35,6 +35,7 @@ interface AddProductFormProps {
     coverImageURL: string | null;
     setCoverImageURL: (url: string | null) => void;
     handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onCropComplete: (croppedImageBlob: Blob) => void;
     productFilesInputRef: React.RefObject<HTMLInputElement | null>;
     handleProductFilesChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     handleProductLinkChange: (value: string) => void;
@@ -55,6 +56,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
     coverImageURL,
     setCoverImageURL,
     handleImageChange,
+    onCropComplete,
     productFilesInputRef,
     handleProductFilesChange,
     handleProductLinkChange,
@@ -71,6 +73,10 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isFreeProduct, setIsFreeProduct] = useState(false); // Independent toggle state
+    
+    // Image cropper state
+    const [showCropper, setShowCropper] = useState(false);
+    const [tempImageSrc, setTempImageSrc] = useState<string | null>(null);
 
     React.useEffect(() => {
         if (dropdownOpen && triggerRef.current) {
@@ -83,12 +89,56 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
         return name.length > max ? name.slice(0, max) + '…' : name;
     };
 
+    // Handle image selection and show cropper
+    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            setCoverError("Image must be less than 5MB");
+            return;
+        }
+
+        setCoverError(null);
+        
+        // Create a temporary URL for the cropper
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const target = ev.target as FileReader | null;
+            if (target && typeof target.result === "string") {
+                setTempImageSrc(target.result);
+                setShowCropper(true);
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Handle cropped image completion
+    const handleCropComplete = (croppedImageBlob: Blob) => {
+        // Create a new file from the cropped blob
+        const croppedFile = new File([croppedImageBlob], 'cover-image.jpg', {
+            type: 'image/jpeg',
+        });
+
+        // Create a preview URL for the cropped image
+        const previewUrl = URL.createObjectURL(croppedImageBlob);
+        setCoverImageURL(previewUrl);
+        
+        // Clear the file input after successful cropping
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+        
+        // Call the parent's onCropComplete handler
+        onCropComplete(croppedImageBlob);
+    };
+
     return (
         <form className="flex flex-col gap-6 flex-1 pt-22">
             {/* Cover Image Upload */}
             <div className="flex flex-col gap-2 ">
                 {coverImageURL ? (
-                    <div className="relative w-['-webkit-fill-available'] h-[250px] rounded overflow-hidden border">
+                    <div className="relative w-full h-[200px] rounded overflow-hidden border">
                         <Image src={coverImageURL} alt="Cover" fill style={{ objectFit: 'cover' }} />
                         
                         {/* Subtle upload indicator */}
@@ -99,7 +149,29 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             </div>
                         )}
                         
-                        <Button type="button" variant="outline" className="absolute top-2 right-2 z-10" onClick={onRemoveCoverImage}>Remove</Button>
+                        <div className="absolute top-2 right-2 z-10 flex gap-2">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                className="bg-white/90 backdrop-blur-sm"
+                                onClick={() => {
+                                    setTempImageSrc(coverImageURL);
+                                    setShowCropper(true);
+                                }}
+                            >
+                                <Crop className="h-3 w-3" />
+                            </Button>
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm"
+                                className="bg-white/90 backdrop-blur-sm"
+                                onClick={onRemoveCoverImage}
+                            >
+                                Remove
+                            </Button>
+                        </div>
                     </div>
                 ) : (
                     <div className='bg-fade-background flex flex-col items-center justify-center py-9 px-20 cursor-pointer' onClick={() => !uploadingCoverImage && fileInputRef?.current?.click()}>
@@ -109,6 +181,7 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                             </div>
                             <div className='flex flex-col items-center'>
                                 <p>Upload your cover image</p>
+                                <p className="text-xs text-gray-500 mt-1">Will be cropped to 16:9 format</p>
                             </div>
                         </div>
                     </div>
@@ -116,9 +189,9 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 <input
                     ref={fileInputRef as any}
                     type="file"
-                    accept="image/jpeg, image/png, image/gif, image/webp, application/pdf, text/plain, application/json"
+                    accept="image/jpeg, image/png, image/gif, image/webp"
                     className="hidden"
-                    onChange={handleImageChange}
+                    onChange={handleImageSelect}
                     disabled={uploadingCoverImage}
                 />
                 {coverError && <span className="text-red-500 text-xs">{coverError}</span>}
@@ -352,6 +425,22 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                 {errors.price && <span className="text-red-500 text-xs">{errors.price}</span>}
             </div>
 
+            {/* Image Cropper Modal */}
+            {tempImageSrc && (
+                <ImageCropper
+                    isOpen={showCropper}
+                    onClose={() => {
+                        setShowCropper(false);
+                        setTempImageSrc(null);
+                        // Clear the file input so the same file can be selected again
+                        if (fileInputRef.current) {
+                            fileInputRef.current.value = '';
+                        }
+                    }}
+                    imageSrc={tempImageSrc}
+                    onCropComplete={handleCropComplete}
+                />
+            )}
         </form>
     );
 };

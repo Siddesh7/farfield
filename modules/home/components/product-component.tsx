@@ -8,7 +8,6 @@ import { getTruncatedDescription } from '@/lib/utils';
 import ProductAccessComponent from './product-access-component';
 import { BASE_URL } from '@/config';
 
-
 const ProductComponent = ({
     product
 }: {
@@ -21,12 +20,12 @@ const ProductComponent = ({
 
     return (
         <>
-            <div className='relative w-[-webkit-fill-available] h-[275px]'>
-                <img
+            <div className='relative aspect-[16/9]'>
+                <Image
                     src={`${BASE_URL}/api/images/${product.images[0]}`}
                     alt={product.name}
-                    style={{ objectFit: "cover" }}
-                    className="object-cover w-full h-full"
+                    className="object-cover"
+                    fill
                 />
             </div>
 
