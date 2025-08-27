@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { BoxContainer } from "@/components/common";
 import { Button, LoadingSpinner } from "@/components/ui";
 import AddProductForm from "./components/add-product-form";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 import { useAuthenticatedAPI } from "@/lib/hooks";
 import { toast } from "sonner";
 import { useGlobalContext } from "@/context/global-context";
@@ -576,13 +576,17 @@ const CreateProduct = ({
         }}
         errors={errors}
       />
-      <div className="flex gap-3 justify-end pb-9">
+      <div className="flex flex-col items-center justify-center gap-3 justify-end pb-9">
+        <div className="opacity-50 flex gap-1 items-center text-sm">
+          <Info size={14}/>
+          <span>1% fee will be charged for every sale</span>
+          </div>
         <Button
-          className="flex-2"
           type="button"
           onClick={handleFormSubmit}
           disabled={creatingProduct}
           size="lg"
+          className="w-full"
         >
           {step === "publishing" && (
             <div className="flex gap-1 items-center">
