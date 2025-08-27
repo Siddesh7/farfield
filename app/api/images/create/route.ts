@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import React from "react";
 import {
   ApiResponseBuilder,
   withErrorHandling,
@@ -6,9 +7,10 @@ import {
 import { RequestValidator } from "@/lib/utils/validation";
 
 interface ProductCardParams {
-  name: string;
-  creator: string;
-  image: string;
+  product_name: string;
+  product_image: string;
+  creator_name: string;
+  creator_image: string
   price: string;
 }
 
@@ -17,18 +19,20 @@ async function generateImageHandler(request: Request) {
 
   // Parse and validate parameters
   const params: ProductCardParams = {
-    name: searchParams.get("name") || "Product Name",
-    creator: searchParams.get("creator") || "Creator",
-    image: searchParams.get("image") || "",
-    price: searchParams.get("price") || "$0.00",
+    product_name: searchParams.get("pn") || "Product Name",
+    product_image: searchParams.get("pi") || "",
+    creator_name: searchParams.get("cn") || "Creator",
+    creator_image: searchParams.get("ci") || "",
+    price: searchParams.get("p") || "$0.00",
   };
 
   // Validate parameters
   const validator = new RequestValidator();
   validator
-    .required(params.name, "name")
-    .required(params.creator, "creator")
-    .required(params.image, "image")
+    .required(params.product_name, "product_name")
+    .required(params.product_image, "product_image")
+    .required(params.creator_name, "creator_name")
+    .required(params.creator_image, "creator_image")
     .required(params.price, "price");
 
   if (!validator.isValid()) {
@@ -36,14 +40,13 @@ async function generateImageHandler(request: Request) {
   }
 
   try {
-    const imageBuffer = await generateProductCardImage(params);
+    const htmlContent = generateProductCardImage(params);
 
     const headers = new Headers();
-    headers.set("Content-Type", "image/png");
+    headers.set("Content-Type", "text/html");
     headers.set("Cache-Control", "public, max-age=3600");
-    headers.set("Content-Disposition", `inline; filename="product-card.png"`);
 
-    return new Response(imageBuffer, {
+    return new Response(htmlContent, {
       headers,
       status: 200,
     });
@@ -53,116 +56,147 @@ async function generateImageHandler(request: Request) {
   }
 }
 
-async function generateProductCardImage(
-  params: ProductCardParams
-): Promise<Buffer> {
-  const { Canvas, createCanvas, loadImage } = await import("canvas");
+function generateProductCardImage(params: ProductCardParams): string {
+  return `
+    <div style="
+      display: flex;
+      background: black;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      border: 1px solid #e5e7eb;
+      width: 1200px;
+      height: 675px;
+      padding: 0px 13px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    ">
+      <div style="
+        position: relative;
+        flex: 1;
+        justify-content: center;
+        align-items: center;
+        display: flex;
+        padding: 0px 12px;
+      ">
+        ${
+          params.product_image && params.product_image.startsWith("http")
+            ? `<img 
+            src="${params.product_image}" 
+            alt="${params.product_name}"
+            style="
+              object-fit: cover;
+              width: 503px;
+              height: 503px;
+              border-radius: 20px;
+            "
+          />`
+            : `<div style="
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f3f4f6;
+            color: #9ca3af;
+          ">
+            <div style="text-align: center;">
+              <div style="
+                width: 48px;
+                height: 48px;
+                background: #d1d5db;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 8px auto;
+              ">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <p style="margin: 0; font-size: 14px;">No Image</p>
+            </div>
+          </div>`
+        }
+      </div>
 
-  // Create canvas with maximum dimensions for product card
-  const width = 3000;
-  const height = 2000;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
+      <div style="
+        flex: 1;
+        padding: 0px 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap:32px;
+      ">
+        
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              background: #FFFFFF12;
+              border-radius: 8px;
+              width: fit-content;
+              padding: 8px 12px;
+              gap: 8px;
+              border: 1px solid #FFFFFF12;
+            "
+          >
+            <img
+              src="${params.creator_image}"
+              alt="${params.creator_name}"
+              style="
+                width: 26px;
+                height: 26px;
+                object-fit: cover;
+                border-radius: 2px;
+              "
+            />
+            <p style="
+              font-size: 16px;
+              font-weight: 400;
+              color: #FFFFFFA3;
+              margin: 0;
+            ">
+            <span style="font-weight: 500;">${params.creator_name}</span>
+            </p>
+          </div>
+         
+          <div>
+            <h1 style="
+              font-size: 36px;
+              font-weight: 600;
+              color: #FFFFFF;
+              margin: 0 0 8px 0;
+              line-height: 1.3;
+            ">
+              ${params.product_name}
+            </h1>
+          </div>
 
-  // Keep background transparent/simple - no background fill
-  // ctx.fillStyle = "#ffffff";
-  // ctx.fillRect(0, 0, width, height);
-
-  // Draw border (optional - keeping minimal)
-  ctx.strokeStyle = "#e5e7eb";
-  ctx.lineWidth = 4;
-  ctx.strokeRect(0, 0, width, height);
-
-  // Draw product name (largest text)
-  ctx.fillStyle = "#1f2937";
-  ctx.font = "bold 120px Arial";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(params.name, 100, 100);
-
-  // Draw creator
-  ctx.fillStyle = "#6b7280";
-  ctx.font = "80px Arial";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText(`by ${params.creator}`, 100, 250);
-
-  // Handle image - try to load it or create a placeholder
-  const imageArea = {
-    x: 100,
-    y: 400,
-    width: 800,
-    height: 600,
-  };
-
-  try {
-    // Try to load the image from the URL
-    if (params.image && params.image.startsWith("http")) {
-      const img = await loadImage(params.image);
-      ctx.drawImage(
-        img,
-        imageArea.x,
-        imageArea.y,
-        imageArea.width,
-        imageArea.height
-      );
-    } else {
-      // Create a placeholder image area
-      ctx.fillStyle = "#f3f4f6";
-      ctx.fillRect(imageArea.x, imageArea.y, imageArea.width, imageArea.height);
-      ctx.strokeStyle = "#d1d5db";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(
-        imageArea.x,
-        imageArea.y,
-        imageArea.width,
-        imageArea.height
-      );
-
-      // Add placeholder text
-      ctx.fillStyle = "#9ca3af";
-      ctx.font = "60px Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        "Image",
-        imageArea.x + imageArea.width / 2,
-        imageArea.y + imageArea.height / 2
-      );
-    }
-  } catch (error) {
-    // If image loading fails, create a placeholder
-    ctx.fillStyle = "#f3f4f6";
-    ctx.fillRect(imageArea.x, imageArea.y, imageArea.width, imageArea.height);
-    ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(imageArea.x, imageArea.y, imageArea.width, imageArea.height);
-
-    // Add error placeholder text
-    ctx.fillStyle = "#9ca3af";
-    ctx.font = "60px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(
-      "Image",
-      imageArea.x + imageArea.width / 2,
-      imageArea.y + imageArea.height / 2
-    );
-  }
-
-  // Draw price (bottom right)
-  ctx.fillStyle = "#059669";
-  ctx.font = "bold 140px Arial";
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText(params.price, width - 100, height - 100);
-
-  // Remove decorative elements to keep it simple
-  // ctx.fillStyle = "#f3f4f6";
-  // ctx.fillRect(0, height - 60, width, 60);
-
-  // Convert to PNG buffer with transparency
-  return canvas.toBuffer("image/png");
+        <div style="display: flex; align-items: center; gap: 8px;">
+        <img
+          src="/USDC.jpg"
+          alt="USDC"
+          style="
+            width: 37px;
+            height: 37px;
+            object-fit: cover;
+            border-radius: 8px;
+          "
+        />
+          <p style="
+            font-weight: 600;
+            font-size: 32px;
+            line-height: 120%;
+            margin: 0;
+            color: #FFFFFF;
+          ">
+            $ ${params.price}
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 export const GET = withErrorHandling(generateImageHandler);
