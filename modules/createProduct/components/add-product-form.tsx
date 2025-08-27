@@ -432,7 +432,6 @@ const AddProductForm: React.FC<AddProductFormProps> = ({
                     onClose={() => {
                         setShowCropper(false);
                         setTempImageSrc(null);
-                        // Clear the file input so the same file can be selected again
                         if (fileInputRef.current) {
                             fileInputRef.current.value = '';
                         }
