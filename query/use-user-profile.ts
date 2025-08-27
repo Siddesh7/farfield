@@ -3,21 +3,23 @@ import { useAuthenticatedAPI } from "@/lib/hooks";
 
 interface UserProfile {
   id: string;
-  privyId: string;
+  privyId?: string;
   farcaster: {
-    fid: number;
-    username: string;
+    ownerAddress: string;
     displayName: string;
+    username: string;
     pfp: string | null;
-    bio: string;
-    followers: number;
-    following: number;
-    verifiedAddresses: string[];
   };
-  wallet: {
+  farcasterFid: number;
+  wallets: Array<{
     address: string;
-    verified: boolean;
-  } | null;
+    chainType: string;
+    walletClientType: string;
+    connectorType: string;
+    isPrimary: boolean;
+    _id: string;
+    id: string;
+  }>;
   isVerified: boolean;
   totalEarned: number;
   createdAt: string;
