@@ -35,7 +35,7 @@ export const usdcUtils = {
 
   // Format for display
   formatDisplay: (amount: bigint): string => {
-    return `$${formatUnits(amount, 6)}`;
+    return `${formatUnits(amount, 6)}`;
   },
 };
 
