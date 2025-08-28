@@ -113,10 +113,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID || ""}
             clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
             config={{
-              loginMethods: ["farcaster"],
-              appearance: {
-                walletList: ["detected_ethereum_wallets"],
-              },
+              loginMethods: ["farcaster", "wallet"],
             }}
           >
             <QueryClientProvider client={queryClient}>

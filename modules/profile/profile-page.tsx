@@ -1,14 +1,9 @@
 import { usePrivy } from "@privy-io/react-auth";
-import {
-  BoxContainer,
-  ProfileCard,
-  WalletSyncStatus,
-} from "@/components/common";
+import { BoxContainer } from "@/components/common";
 import { LoadingSpinner, LoadingState } from "@/components/ui/loading-spinner";
 import { Skeleton, Button } from "@/components/ui";
 import { useUserProfile } from "@/query";
-import { FC, useState } from "react";
-import { Package, WalletMinimal } from "lucide-react";
+import { FC, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Product } from "@/lib/types/product";
 import { PurchaseHistoryItem } from "@/query";
@@ -16,7 +11,13 @@ import ProfileComponent from "./components/profile-component";
 import ListedProducts from "./components/listed-products";
 import BoughtProducts from "./components/bought-products";
 import { toast } from "sonner";
-import { useSendTransaction, useAccount, useReadContract } from "wagmi";
+import {
+  useSendTransaction,
+  useAccount,
+  useReadContracts,
+  useSwitchChain,
+  useSwitchAccount,
+} from "wagmi";
 import { encodeFunctionData } from "viem";
 import {
   CHAIN_ID,
@@ -36,32 +37,82 @@ const ProfilePage: FC<ProfilePageProps> = ({
   purchasedproducts,
   loading,
 }) => {
-  const { ready, authenticated, user } = usePrivy();
+  const { ready, user, connectWallet } = usePrivy();
   const {
     data: profile,
-    isLoading: profileLoading,
-    error: profileError,
+
     refetch: refetchUserProfile,
   } = useUserProfile();
   const [isClaimingAmount, setIsClaimingAmount] = useState(false);
 
-  // Get wallet address from wagmi
-  const { address } = useAccount();
+  // Get wallet address(es) from wagmi
+  const { address, addresses } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
+  // Collect target addresses: connected wallet, profile owner, and all linked wallets
+  const targetAddresses = Array.from(
+    new Set(
+      [
+        address,
+        profile?.farcaster?.ownerAddress as `0x${string}` | undefined,
+        ...(profile?.wallets?.map((w) => w.address as `0x${string}`) || []),
+      ].filter(Boolean) as `0x${string}`[]
+    )
+  ) as `0x${string}`[];
 
-  // Get seller info directly from contract
+  const contracts = useMemo(
+    () =>
+      targetAddresses.map((addr) => ({
+        address: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
+        abi: FARFIELD_ABI,
+        functionName: "sellerInfos" as const,
+        args: [addr] as const,
+      })),
+    [targetAddresses]
+  );
+
   const {
-    data: sellerInfo,
+    data: sellerInfos,
     isLoading: sellerInfoLoading,
-    refetch: refetchSellerInfo,
-  } = useReadContract({
-    address: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
-    abi: FARFIELD_ABI,
-    functionName: "sellerInfos",
-    args: address ? [address] : undefined,
+    refetch: refetchSellerInfos,
+  } = useReadContracts({
+    contracts,
+    allowFailure: true,
     query: {
-      enabled: !!address,
+      enabled: contracts.length > 0,
     },
   });
+
+  const parsedSellerInfos = (sellerInfos || [])
+    .map((r) => r?.result as unknown as [bigint, bigint] | undefined)
+    .filter(Boolean) as [bigint, bigint][];
+
+  const totalEarnedAll = parsedSellerInfos.reduce(
+    (sum, info) => sum + (info?.[0] || BigInt(0)),
+    BigInt(0)
+  );
+  const availableAll = parsedSellerInfos.reduce(
+    (sum, info) => sum + (info?.[1] || BigInt(0)),
+    BigInt(0)
+  );
+
+  // Pair each target address to its read result (earned, available)
+  const addressInfoPairs = useMemo(
+    () =>
+      targetAddresses.map((addr, idx) => ({
+        address: addr,
+        info:
+          (sellerInfos?.[idx]?.result as unknown as
+            | [bigint, bigint]
+            | undefined) || undefined,
+      })),
+    [targetAddresses, sellerInfos]
+  );
+
+  const addressWithAvailable = addressInfoPairs.find(
+    (p) => (p.info?.[1] || BigInt(0)) > BigInt(0)
+  )?.address;
+
+  const claimAddress = addressWithAvailable || address;
 
   const { sendTransactionAsync } = useSendTransaction();
 
@@ -71,6 +122,23 @@ const ProfilePage: FC<ProfilePageProps> = ({
     setIsClaimingAmount(true);
 
     try {
+      // If available on a different address, prompt to connect that wallet (do not send tx)
+      if (availableAll === BigInt(0)) {
+        toast.error("No funds available to claim across your addresses.");
+        return;
+      }
+
+      // If the claim address is not among connected wagmi addresses, prompt connect and exit
+      const isClaimAddressConnected =
+        !!claimAddress &&
+        (addresses || []).some(
+          (a) => a?.toLowerCase() === (claimAddress as string).toLowerCase()
+        );
+      if (!isClaimAddressConnected) {
+        connectWallet({ suggestedAddress: claimAddress });
+        return;
+      }
+
       const data = encodeFunctionData({
         abi: FARFIELD_ABI,
         functionName: "withdrawEarnings",
@@ -80,18 +148,21 @@ const ProfilePage: FC<ProfilePageProps> = ({
       toast.loading("Processing withdrawal transaction...", {
         id: "claim-loading",
       });
-
+      await switchChainAsync({
+        chainId: CHAIN_ID,
+      });
       const hash = await sendTransactionAsync({
+        account: claimAddress as `0x${string}`,
         to: FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         data,
         value: BigInt(0),
-        chainId: CHAIN_ID
+        chainId: CHAIN_ID,
       });
 
       console.log("Transaction Hash:", hash);
 
       // Refetch both user profile and seller info to update amounts
-      await Promise.all([refetchUserProfile(), refetchSellerInfo()]);
+      await Promise.all([refetchUserProfile(), refetchSellerInfos()]);
 
       toast.success("Withdrawal transaction submitted successfully!", {
         id: "claim-loading",
@@ -145,25 +216,22 @@ const ProfilePage: FC<ProfilePageProps> = ({
                         {sellerInfoLoading ? (
                           <Skeleton className="h-4 w-16" />
                         ) : (
-                          `+${
-                            sellerInfo
-                              ? usdcUtils.formatDisplay(sellerInfo[1])
-                              : "$0.00"
-                          }`
+                          `+$${usdcUtils.formatDisplay(availableAll)}`
                         )}
                       </span>
-                      {sellerInfo && sellerInfo[0] > BigInt(0) && (
+                      {totalEarnedAll > BigInt(0) && (
                         <span className="text-xs text-gray-500">
-                          Total earned: {usdcUtils.formatDisplay(sellerInfo[0])}
+                          Total earned:{" "}
+                          {usdcUtils.formatDisplay(totalEarnedAll)}
                         </span>
                       )}
                     </div>
 
                     <Button
                       disabled={
-                        (listedProducts?.length || 0) === 0 ||
                         isClaimingAmount ||
-                        (sellerInfo?.[1] || BigInt(0)) === BigInt(0)
+                        sellerInfoLoading ||
+                        availableAll === BigInt(0)
                       }
                       onClick={handleClaimAmount}
                       className="min-w-[120px]"
