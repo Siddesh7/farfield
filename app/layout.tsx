@@ -63,7 +63,7 @@ export const metadata: Metadata = {
           name: "the social store",
           url: appUrl,
           splashImageUrl: `${appUrl}/splash.png`,
-          splashBackgroundColor: "#7c3aed", // Farcaster purple
+          splashBackgroundColor: "#000000",
         },
       },
     }),

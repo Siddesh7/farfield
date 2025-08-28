@@ -34,7 +34,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   const castHandler = async () => {
     await sdk.actions.composeCast({
       text: "i just listed my very first product in farfield, check it out",
-      embeds: [`https://farfield.shop/?pid=${productId}`],
+      embeds: [`${process.env.NEXT_PUBLIC_URL}/api/p/${productId}`],
     });
   };
 
