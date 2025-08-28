@@ -10,7 +10,7 @@ interface ProductCardParams {
   product_name: string;
   product_image: string;
   creator_name: string;
-  creator_image: string
+  creator_image: string;
   price: string;
 }
 
@@ -40,13 +40,45 @@ async function generateImageHandler(request: Request) {
   }
 
   try {
-    const htmlContent = generateProductCardImage(params);
+    // Resolve and inline images as data URLs to avoid cross-origin issues in SVG images
+    const origin = new URL(request.url).origin;
+    const resolveUrl = (u: string) =>
+      u.startsWith("http") ? u : `${origin}${u}`;
+
+    async function toDataUrl(url: string): Promise<string | null> {
+      try {
+        const res = await fetch(resolveUrl(url), { cache: "no-store" });
+        if (!res.ok) return null;
+        const contentType = res.headers.get("content-type") || "image/png";
+        const arrayBuffer = await res.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        return `data:${contentType};base64,${base64}`;
+      } catch {
+        return null;
+      }
+    }
+
+    const [productDataUrl, creatorDataUrl, usdcDataUrl] = await Promise.all([
+      toDataUrl(params.product_image),
+      toDataUrl(params.creator_image),
+      toDataUrl("/USDC.jpg"),
+    ]);
+
+    const svgContent = generateProductCardSvg(
+      {
+        ...params,
+        product_image: productDataUrl || resolveUrl(params.product_image),
+        creator_image: creatorDataUrl || resolveUrl(params.creator_image),
+        // price unchanged
+      },
+      usdcDataUrl || resolveUrl("/USDC.jpg")
+    );
 
     const headers = new Headers();
-    headers.set("Content-Type", "text/html");
+    headers.set("Content-Type", "image/svg+xml; charset=utf-8");
     headers.set("Cache-Control", "public, max-age=3600");
 
-    return new Response(htmlContent, {
+    return new Response(svgContent, {
       headers,
       status: 200,
     });
@@ -56,147 +88,93 @@ async function generateImageHandler(request: Request) {
   }
 }
 
-function generateProductCardImage(params: ProductCardParams): string {
-  return `
-    <div style="
-      display: flex;
-      background: black;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      border: 1px solid #e5e7eb;
-      width: 1200px;
-      height: 675px;
-      padding: 0px 13px;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    ">
-      <div style="
-        position: relative;
-        flex: 1;
-        justify-content: center;
-        align-items: center;
-        display: flex;
-        padding: 0px 12px;
-      ">
-        ${
-          params.product_image && params.product_image.startsWith("http")
-            ? `<img 
-            src="${params.product_image}" 
-            alt="${params.product_name}"
-            style="
-              object-fit: cover;
-              width: 503px;
-              height: 503px;
-              border-radius: 20px;
-            "
-          />`
-            : `<div style="
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f3f4f6;
-            color: #9ca3af;
-          ">
-            <div style="text-align: center;">
-              <div style="
-                width: 48px;
-                height: 48px;
-                background: #d1d5db;
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                margin: 0 auto 8px auto;
-              ">
-                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <p style="margin: 0; font-size: 14px;">No Image</p>
-            </div>
-          </div>`
-        }
-      </div>
+function generateProductCardSvg(
+  params: ProductCardParams,
+  usdcHref?: string
+): string {
+  const width = 1200;
+  const height = 675;
+  const productImage = params.product_image;
+  const creatorImage = params.creator_image;
+  const creatorName = params.creator_name || "Creator";
+  const truncatedCreator =
+    creatorName.length > 28 ? creatorName.slice(0, 28) + "…" : creatorName;
+  const safeText = (t: string) =>
+    t
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
 
-      <div style="
-        flex: 1;
-        padding: 0px 12px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap:32px;
-      ">
-        
-          <div
-            style="
-              display: flex;
-              align-items: center;
-              background: #FFFFFF12;
-              border-radius: 8px;
-              width: fit-content;
-              padding: 8px 12px;
-              gap: 8px;
-              border: 1px solid #FFFFFF12;
-            "
-          >
-            <img
-              src="${params.creator_image}"
-              alt="${params.creator_name}"
-              style="
-                width: 26px;
-                height: 26px;
-                object-fit: cover;
-                border-radius: 2px;
-              "
-            />
-            <p style="
-              font-size: 16px;
-              font-weight: 400;
-              color: #FFFFFFA3;
-              margin: 0;
-            ">
-            <span style="font-weight: 500;">${params.creator_name}</span>
-            </p>
-          </div>
-         
-          <div>
-            <h1 style="
-              font-size: 36px;
-              font-weight: 600;
-              color: #FFFFFF;
-              margin: 0 0 8px 0;
-              line-height: 1.3;
-            ">
-              ${params.product_name}
-            </h1>
-          </div>
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <style>
+      .title { font: 600 36px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #ffffff; }
+      .label { font: 400 16px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #ffffffa3; }
+      .price { font: 600 32px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; fill: #ffffff; }
+    </style>
+    ${
+      creatorImage
+        ? `<clipPath id="clip-creator"><rect x="648" y="224" width="26" height="26" rx="4" ry="4"/></clipPath>`
+        : ""
+    }
+    ${
+      productImage
+        ? `<clipPath id="clip-product"><rect x="80" y="86" width="503" height="503" rx="20" ry="20"/></clipPath>`
+        : ""
+    }
+    <clipPath id="clip-usdc"><rect x="640" y="342" width="37" height="37" rx="8" ry="8"/></clipPath>
+  </defs>
+  <rect x="0" y="0" width="${width}" height="${height}" fill="#000000" />
 
-        <div style="display: flex; align-items: center; gap: 8px;">
-        <img
-          src="/USDC.jpg"
-          alt="USDC"
-          style="
-            width: 37px;
-            height: 37px;
-            object-fit: cover;
-            border-radius: 8px;
-          "
-        />
-          <p style="
-            font-weight: 600;
-            font-size: 32px;
-            line-height: 120%;
-            margin: 0;
-            color: #FFFFFF;
-          ">
-            $ ${params.price}
-          </p>
-        </div>
-      </div>
-    </div>
-  `;
+  ${
+    productImage
+      ? `
+    <g clip-path="url(#clip-product)">
+      <image href="${safeText(
+        productImage
+      )}" x="80" y="86" width="503" height="503" preserveAspectRatio="xMidYMid slice"/>
+    </g>
+  `
+      : `
+    <rect x="80" y="86" width="503" height="503" rx="20" ry="20" fill="#111827" stroke="#374151" />
+    <text x="331" y="350" text-anchor="middle" class="label">No Image</text>
+  `
+  }
+
+  <!-- Creator pill -->
+  <g>
+    <rect x="640" y="216" width="300" height="42" rx="8" ry="8" fill="#FFFFFF12" stroke="#FFFFFF12" />
+    ${
+      creatorImage
+        ? `
+      <g clip-path="url(#clip-creator)">
+        <image href="${safeText(
+          creatorImage
+        )}" x="648" y="224" width="26" height="26" preserveAspectRatio="xMidYMid slice"/>
+      </g>
+    `
+        : `
+      <rect x="648" y="224" width="26" height="26" rx="4" ry="4" fill="#374151" />
+    `
+    }
+    <text x="684" y="237" dominant-baseline="middle" class="label">${safeText(
+      truncatedCreator
+    )}</text>
+  </g>
+
+  <!-- Title -->
+  <text x="640" y="300" class="title">${safeText(params.product_name)}</text>
+
+  <!-- Price with USDC image -->
+  <g clip-path="url(#clip-usdc)">
+    <image href="${
+      usdcHref || "/USDC.jpg"
+    }" x="640" y="342" width="37" height="37" preserveAspectRatio="xMidYMid slice"/>
+  </g>
+  <text x="690" y="370" class="price">$ ${safeText(params.price)}</text>
+</svg>`;
 }
 
 export const GET = withErrorHandling(generateImageHandler);
