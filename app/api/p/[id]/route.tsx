@@ -77,7 +77,7 @@ async function getProductByIdShortHandler(
     other: {
       "fc:frame": JSON.stringify({
         version: "next",
-        imageUrl: `${appUrl}/api/images/${images[0]}`,
+        imageUrl: embedImage,
         button: {
           title: "Buy on farfield",
           action: {
