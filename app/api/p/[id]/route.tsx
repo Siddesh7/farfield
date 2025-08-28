@@ -4,6 +4,8 @@ import { Product } from "@/models/product";
 import { User } from "@/models/user";
 import { ApiResponseBuilder, RequestValidator, withErrorHandling } from "@/lib";
 const appUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 async function getProductByIdShortHandler(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -125,6 +127,9 @@ async function getProductByIdShortHandler(
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     },
   });
 }
