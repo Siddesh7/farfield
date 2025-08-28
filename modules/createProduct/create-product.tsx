@@ -125,8 +125,8 @@ const CreateProduct = ({
   // Handle cropped image completion
   const handleCropComplete = async (croppedImageBlob: Blob) => {
     // Create a new file from the cropped blob
-    const croppedFile = new File([croppedImageBlob], 'cover-image.jpg', {
-      type: 'image/jpeg',
+    const croppedFile = new File([croppedImageBlob], "cover-image.jpg", {
+      type: "image/jpeg",
     });
 
     // Store the cropped file for form submission
@@ -484,7 +484,7 @@ const CreateProduct = ({
         toast.success(res.message);
         refetchAllProducts();
         setOpen(true);
-        setProductId(null);
+        setProductId(data.id);
 
         setFormVariables(defaultFormVariables);
         setErrors({});
@@ -536,9 +536,8 @@ const CreateProduct = ({
 
   // Show invite code component if user doesn't have seller access
   if (!hasSellerAccess) {
-    return <InviteCodeComponent />
+    return <InviteCodeComponent />;
   }
-
 
   return (
     <BoxContainer className="flex flex-col gap-6 pt-5 px-5.5 flex-1 ">
@@ -578,9 +577,9 @@ const CreateProduct = ({
       />
       <div className="flex flex-col items-center justify-center gap-3 justify-end pb-9">
         <div className="opacity-50 flex gap-1 items-center text-sm">
-          <Info size={14}/>
+          <Info size={14} />
           <span>1% fee will be charged for every sale</span>
-          </div>
+        </div>
         <Button
           type="button"
           onClick={handleFormSubmit}
