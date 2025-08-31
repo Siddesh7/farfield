@@ -57,7 +57,7 @@ export const metadata: Metadata = {
       version: "next",
       imageUrl: `${appUrl}/og.png`,
       button: {
-        title: "Explore Marketplace 🚀",
+        title: "Explore Marketplace",
         action: {
           type: "launch_frame",
           name: "the social store",
