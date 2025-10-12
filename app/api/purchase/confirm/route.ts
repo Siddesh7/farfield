@@ -39,13 +39,15 @@ async function confirmPurchaseHandler(
     .required(body.purchaseId, "purchaseId")
     .string(body.purchaseId, "purchaseId", 1, 100)
     .required(body.transactionHash, "transactionHash")
-    .string(body.transactionHash, "transactionHash", 66, 66);
+    .string(body.transactionHash, "transactionHash", 66, 66); // Standard transaction hash length
   if (!validator.isValid()) {
     return validator.getErrorResponse()!;
   }
+
+  // Validate transaction hash format
   if (!/^0x[a-fA-F0-9]{64}$/.test(body.transactionHash)) {
     return ApiResponseBuilder.error(
-      "Invalid transaction hash",
+      "Invalid transaction hash format",
       HTTP_STATUS.BAD_REQUEST
     );
   }
@@ -128,7 +130,7 @@ async function confirmPurchaseHandler(
       HTTP_STATUS.BAD_REQUEST
     );
   }
-  
+
   // Mark purchase as completed
   await purchase.markCompleted(body.transactionHash);
 
@@ -140,7 +142,7 @@ async function confirmPurchaseHandler(
 
     // Create notifications for each product
     for (const item of purchase.items) {
-      const product = products.find(p => p._id.toString() === item.productId);
+      const product = products.find((p) => p._id.toString() === item.productId);
       if (product) {
         await NotificationService.handlePurchaseEvent({
           productId: product._id.toString(),
@@ -156,7 +158,6 @@ async function confirmPurchaseHandler(
     // Don't fail the purchase confirmation if notifications fail
   }
 
-  
   // Update totalSold for each purchased product
   for (const item of purchase.items) {
     await Product.findByIdAndUpdate(
@@ -165,7 +166,7 @@ async function confirmPurchaseHandler(
       { new: true }
     );
   }
-  
+
   // Prepare response
   const responseData = {
     purchaseId: body.purchaseId,

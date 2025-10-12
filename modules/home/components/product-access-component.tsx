@@ -1,215 +1,244 @@
-import React, { useState } from 'react';
-import { Button, Skeleton } from '@/components/ui';
-import { CirclePlus, Download, ShoppingCart, CreditCard, Trash2, Check } from 'lucide-react';
-import { DeleteConfirmationModal } from './delete-confirmation-modal';
-import { useGlobalContext } from '@/context/global-context';
-import { Product } from '@/lib/types/product';
+// 1. React imports
+import React, { useState, useCallback } from "react";
+
+// 2. Third-party imports
+import {
+  CirclePlus,
+  Download,
+  ShoppingCart,
+  CreditCard,
+  Trash2,
+  Check,
+} from "lucide-react";
+import { useAccount } from "wagmi";
 import { toast } from "sonner";
-import { CopyIcon, DoubleTickIcon, WalletIcon, FileIcon, SwapIcon } from '@/components/icons';
-import { useAuthenticatedFetch } from '@/lib/hooks/use-authenticated-fetch';
-import { useProductAccess } from '@/query/use-product-access';
-import { useDeleteProduct } from '@/query/use-delete-product';
-import { usePurchaseConfirm } from '@/query/use-purchase-confirm';
-import { useAuthenticatedAPI } from '@/lib/hooks/use-authenticated-fetch';
-import { useAccount, useSendTransaction } from 'wagmi';
-import { usdcContract, usdcUtils, FARFIELD_CONTRACT_ADDRESS, CHAIN_ID } from '@/lib/blockchain';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { BASE_URL, wagmiConfig } from '@/config';
-import { useMiniApp } from '@/providers/provider';
-import JSZip from 'jszip';
+import JSZip from "jszip";
+
+// 3. Internal imports (absolute paths)
+import { Button, Skeleton } from "@/components/ui";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import {
+  CopyIcon,
+  DoubleTickIcon,
+  WalletIcon,
+  FileIcon,
+  SwapIcon,
+} from "@/components/icons";
+import { useGlobalContext } from "@/context/global-context";
+import { useAuthenticatedFetch } from "@/lib/hooks/use-authenticated-fetch";
+import { useAuthenticatedAPI } from "@/lib/hooks/use-authenticated-fetch";
+import { useProductAccess } from "@/query/use-product-access";
+import { useDeleteProduct } from "@/query/use-delete-product";
+import { usePurchaseConfirm } from "@/query/use-purchase-confirm";
+import {
+  usdcUtils,
+  transactionBatcher,
+  sendCallsUtils,
+  CHAIN_ID,
+} from "@/lib/blockchain";
+import { BASE_URL, wagmiConfig } from "@/config";
+import { useMiniApp } from "@/providers/provider";
+import { Product } from "@/lib/types/product";
+
+// 4. Relative imports
+import { DeleteConfirmationModal } from "./delete-confirmation-modal";
 
 interface ProductAccessComponentProps {
-  product: Product
+  product: Product;
 }
 
-const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product }) => {
+const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({
+  product,
+}) => {
+  // Hooks at the top
   const { data, isLoading, error, refetch } = useProductAccess(product.id);
-  const { addToCart, cart, setActiveModule, setSelectedProduct, removeFromCart } = useGlobalContext();
-  const isInCart = cart.some((p) => p.id === product.id);
+  const {
+    addToCart,
+    cart,
+    setActiveModule,
+    setSelectedProduct,
+    removeFromCart,
+  } = useGlobalContext();
   const { authenticatedFetch } = useAuthenticatedFetch();
   const { post } = useAuthenticatedAPI();
   const { address, isConnected } = useAccount();
-  const { sendTransactionAsync } = useSendTransaction({config: wagmiConfig});
   const deleteProductMutation = useDeleteProduct();
   const purchaseConfirmMutation = usePurchaseConfirm();
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { actions: sdkActions } = useMiniApp();
-  
+
+  const isInCart = cart.some((p) => p.id === product.id);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   // Buy Now state management
   const [loading, setLoading] = useState(false);
   const [checkoutStarted, setCheckoutStarted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  
+
   // Download and copy states
   const [isDownloaded, setIsDownloaded] = useState(false);
   const [isGeneratingZip, setIsGeneratingZip] = useState(false);
   const [copiedLinks, setCopiedLinks] = useState<Set<number>>(new Set());
-  
+
   // Step states: 'pending', 'active', 'completed', 'error'
-  const [stepStates, setStepStates] = useState<('pending' | 'active' | 'completed' | 'error')[]>([
-    'pending', 'pending', 'pending'
-  ]);
+  const [stepStates, setStepStates] = useState<
+    ("pending" | "active" | "completed" | "error")[]
+  >(["pending", "pending"]);
 
   const checkoutSteps = [
-    { icon: WalletIcon, text: product.price === 0 ? 'Getting free product' : 'Approve USDC spending' },
-    { icon: FileIcon, text: 'Sign the transaction' },
-    { icon: SwapIcon, text: 'Confirm Purchase' }
+    {
+      icon: FileIcon,
+      text: product.price === 0 ? "Getting free product" : "Processing Payment",
+    },
+    { icon: SwapIcon, text: "Finalizing Purchase" },
   ];
 
-  // Helper to update step state
-  const updateStepState = (stepIndex: number, state: 'pending' | 'active' | 'completed' | 'error') => {
-    setStepStates(prev => prev.map((s, i) => i === stepIndex ? state : s));
-  };
+  // Event handlers
+  const updateStepState = useCallback(
+    (
+      stepIndex: number,
+      state: "pending" | "active" | "completed" | "error"
+    ) => {
+      setStepStates((prev) =>
+        prev.map((s, i) => (i === stepIndex ? state : s))
+      );
+    },
+    []
+  );
 
-  // Helper to get short error message (20 words max)
-  const getShortErrorMessage = (error: string): string => {
-    const words = error.split(' ');
+  const getShortErrorMessage = useCallback((error: string): string => {
+    const words = error.split(" ");
     if (words.length <= 20) return error;
-    return words.slice(0, 20).join(' ') + '...';
-  };
+    return words.slice(0, 20).join(" ") + "...";
+  }, []);
 
-  // Main buy now checkout process
-  const initiateBuyNow = async () => {
+  const initiateBuyNow = useCallback(async () => {
     setCheckoutError(null);
     setLoading(true);
     setCheckoutStarted(true);
     setCurrentStep(0);
-    
+
     // Reset all steps to pending
-    setStepStates(['pending', 'pending', 'pending']);
+    setStepStates(["pending", "pending"]);
 
     try {
       if (!isConnected || !address) {
-        throw new Error('Please connect your wallet to proceed with the purchase.');
+        throw new Error(
+          "Please connect your wallet to proceed with the purchase."
+        );
       }
 
       // Initiate purchase first (silent step)
-      const res = await post('/api/purchase/initiate', {
+      const res = await post("/api/purchase/initiate", {
         items: [{ productId: product.id }],
         buyerWallet: address,
       });
-      
+
       const data = res.data;
       if (!data || !data.transactions || !data.purchaseId) {
-        throw new Error('Failed to initiate purchase. Please try again.');
+        throw new Error("Failed to initiate purchase. Please try again.");
       }
 
-      // Step 1: Approve USDC spending (or skip for free products)
+      // Step 1: Process payment (execute batched transaction)
       setCurrentStep(0);
-      updateStepState(0, 'active');
-      
-      if (product.price > 0) {
-        const requiredAmount = usdcUtils.toUnits(
-          Number(data.summary.totalAmount) + Number(data.summary.platformFee)
-        );
-        
-        const allowance = await usdcContract.getAllowance(
-          address as `0x${string}`,
-          FARFIELD_CONTRACT_ADDRESS as `0x${string}`
-        );
-        
-        if (allowance < requiredAmount) {
-          const approvalTx = usdcContract.generateApprovalTransaction(
-            FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
-            requiredAmount
-          );
-          
-          await sendTransactionAsync({
-            to: approvalTx.to as `0x${string}`,
-            data: approvalTx.data,
-            value: BigInt(0),
-            chainId: CHAIN_ID
-          });
-        }
-      }
-      
-      updateStepState(0, 'completed');
+      updateStepState(0, "active");
 
-      // Step 2: Sign the transaction
+      // Convert transactions to sendCalls format
+      const calls = transactionBatcher.generateCallsFromTransactions(
+        data.transactions
+      );
+
+      // Execute batched calls
+      const result = await sendCallsUtils.executeBatchedCalls(
+        wagmiConfig,
+        calls,
+        CHAIN_ID
+      );
+
+      // Get the batch ID from sendCalls result
+      const batchId = result.id;
+
+      updateStepState(0, "completed");
+
+      // Step 2: Finalize purchase (wait for confirmation)
       setCurrentStep(1);
-      updateStepState(1, 'active');
-      let lastTxHash = null;
-      
-      for (const tx of data.transactions) {
-        if (typeof tx.to !== 'string' || !tx.to.startsWith('0x')) {
-          throw new Error('Invalid transaction data received.');
-        }
-        
-        const txRequest: any = {
-          to: tx.to,
-          data: tx.data,
-          value: BigInt(String(tx.value ?? '0')),
-        };
-        
-        if (tx.chainId && !isNaN(Number(tx.chainId))) {
-          txRequest.chainId = Number(tx.chainId);
-        }
-        
-        const hash = await sendTransactionAsync(txRequest);
-        lastTxHash = hash;
-      }
-      
-      updateStepState(1, 'completed');
+      updateStepState(1, "active");
 
-      // Step 3: Confirm Purchase
-      setCurrentStep(2);
-      updateStepState(2, 'active');
-      
-      // Wait 2 seconds before confirming purchase
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (!lastTxHash) {
-        throw new Error('Transaction hash is missing');
+      // Wait for batch to complete and get transaction hashes
+      const batchResult = await sendCallsUtils.waitForBatchCompletion(
+        wagmiConfig,
+        batchId
+      );
+
+      // Get the purchase transaction hash (should be the last one in the batch)
+      const transactionHashes = batchResult.transactionHashes;
+      const purchaseTransactionHash =
+        transactionHashes[transactionHashes.length - 1];
+
+      if (!purchaseTransactionHash) {
+        throw new Error("Purchase transaction hash not found in batch");
       }
-      
+
       const confirmResult = await purchaseConfirmMutation.mutateAsync({
         purchaseId: data.purchaseId,
-        transactionHash: lastTxHash,
+        transactionHash: purchaseTransactionHash, // Using actual transaction hash
       });
-      
-      updateStepState(2, 'completed');
-      
+
+      updateStepState(1, "completed");
+
       // Success handling
-      toast.success('Purchase completed successfully!');
-      
+      toast.success("Purchase completed successfully!");
+
       // Remove from cart if it was there
       if (isInCart) {
         removeFromCart(product.id);
       }
-      
+
       // Refetch product access to update UI
       await refetch();
-      
+
       // Reset checkout state after a delay
       setTimeout(() => {
         setCheckoutStarted(false);
         setLoading(false);
-        setStepStates(['pending', 'pending', 'pending']);
+        setStepStates(["pending", "pending"]);
         setCurrentStep(0);
       }, 2000);
-
     } catch (err: any) {
       const errorMessage = getShortErrorMessage(
-        err?.message || (typeof err === 'string' ? err : 'Purchase failed. Please try again.')
+        err?.message ||
+          (typeof err === "string" ? err : "Purchase failed. Please try again.")
       );
-      
+
       setCheckoutError(errorMessage);
-      
-      const activeStepIndex = stepStates.findIndex(state => state === 'active');
+
+      const activeStepIndex = stepStates.findIndex(
+        (state) => state === "active"
+      );
       if (activeStepIndex !== -1) {
-        updateStepState(activeStepIndex, 'error');
+        updateStepState(activeStepIndex, "error");
       } else {
-        updateStepState(currentStep, 'error');
+        updateStepState(currentStep, "error");
       }
-      
+
       toast.error(errorMessage);
       setLoading(false);
     }
-  };
+  }, [
+    isConnected,
+    address,
+    post,
+    product.id,
+    product.price,
+    updateStepState,
+    purchaseConfirmMutation,
+    isInCart,
+    removeFromCart,
+    refetch,
+    getShortErrorMessage,
+  ]);
 
-    // Handle download functionality
-  const handleDownloadAll = async () => {
+  const handleDownloadAll = useCallback(async () => {
     if (!data?.downloadUrls || data.downloadUrls.length === 0) {
       toast.error("No files to download");
       return;
@@ -234,11 +263,11 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
       // For multiple files, create and download a zip on frontend
       setIsGeneratingZip(true);
       toast.info("Generating zip file...");
-      
+
       try {
         // Create a new JSZip instance
         const zip = new JSZip();
-        
+
         // Download each file and add to zip
         const downloadPromises = data.downloadUrls.map(async (file, index) => {
           try {
@@ -246,10 +275,10 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             if (!response.ok) {
               throw new Error(`Failed to fetch ${file.fileName}`);
             }
-            
+
             const blob = await response.blob();
             zip.file(file.fileName, blob);
-            
+
             return { success: true, fileName: file.fileName };
           } catch (error) {
             console.error(`Error downloading file ${file.fileName}:`, error);
@@ -259,24 +288,28 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
 
         // Wait for all files to be downloaded and added to zip
         const results = await Promise.all(downloadPromises);
-        const failedFiles = results.filter(r => !r.success);
-        
+        const failedFiles = results.filter((r) => !r.success);
+
         if (failedFiles.length > 0) {
-          console.warn('Some files failed to download:', failedFiles);
-          toast.warning(`${failedFiles.length} file(s) could not be added to zip`);
+          console.warn("Some files failed to download:", failedFiles);
+          toast.warning(
+            `${failedFiles.length} file(s) could not be added to zip`
+          );
         }
 
         // Generate the zip file
-        const zipBlob = await zip.generateAsync({ 
-          type: 'blob',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 }
+        const zipBlob = await zip.generateAsync({
+          type: "blob",
+          compression: "DEFLATE",
+          compressionOptions: { level: 6 },
         });
 
         // Create filename for the zip
-        const sanitizedProductName = product.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50);
+        const sanitizedProductName = product.name
+          .replace(/[^a-zA-Z0-9]/g, "_")
+          .substring(0, 50);
         const zipFileName = `${sanitizedProductName}_files.zip`;
-        
+
         // Create object URL for the zip
         const zipUrl = URL.createObjectURL(zipBlob);
 
@@ -288,7 +321,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          
+
           // Clean up the blob URL
           setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
         } else {
@@ -300,65 +333,64 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          
-          // Clean up the blob URL  
+
+          // Clean up the blob URL
           setTimeout(() => URL.revokeObjectURL(zipUrl), 100);
         }
-        
+
         toast.success("Zip file ready for download!");
       } catch (error) {
-        console.error('Error creating zip:', error);
+        console.error("Error creating zip:", error);
         toast.error("Failed to create zip file");
         return;
       } finally {
         setIsGeneratingZip(false);
       }
     }
+  }, [data?.downloadUrls, product.name]);
 
-    setIsDownloaded(true);
-  };
+  const handleExternalLink = useCallback(
+    (url: string, name: string, index: number) => {
+      navigator.clipboard
+        .writeText(url)
+        .then(() => {
+          setCopiedLinks((prev) => new Set(prev).add(index));
 
-  // Handle external link copy
-  const handleExternalLink = (url: string, name: string, index: number) => {
-    navigator.clipboard
-      .writeText(url)
-      .then(() => {
-        setCopiedLinks((prev) => new Set(prev).add(index));
+          // Reset the copied state after 1 second
+          setTimeout(() => {
+            setCopiedLinks((prev) => {
+              const newSet = new Set(prev);
+              newSet.delete(index);
+              return newSet;
+            });
+          }, 1000);
+        })
+        .catch(() => {
+          toast.error("Failed to copy link");
+        });
+    },
+    []
+  );
 
-        // Reset the copied state after 1 second
-        setTimeout(() => {
-          setCopiedLinks((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(index);
-            return newSet;
-          });
-        }, 1000);
-      })
-      .catch(() => {
-        toast.error("Failed to copy link");
-      });
-  };
-
-  // Handle delete product
-  const handleDeleteClick = () => {
+  const handleDeleteClick = useCallback(() => {
     setShowDeleteConfirm(true);
-  };
+  }, []);
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = useCallback(() => {
     deleteProductMutation.mutate(product.id, {
       onSuccess: () => {
         setShowDeleteConfirm(false);
         setSelectedProduct(null);
-        setActiveModule('home');
+        setActiveModule("home");
       },
     });
-  };
+  }, [deleteProductMutation, product.id, setSelectedProduct, setActiveModule]);
 
-  const handleDeleteCancel = () => {
+  const handleDeleteCancel = useCallback(() => {
     setShowDeleteConfirm(false);
-  };
+  }, []);
 
-  // Loading state
+  // Early returns for loading/error states
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -376,31 +408,32 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
       <div className="border rounded-lg p-4">
         <div className="mt-3 flex gap-3">
           <Button
-            size='lg'
+            size="lg"
             variant="outline"
             className="flex-1 font-semibold bg-white"
             onClick={() => {
               addToCart(product);
-              toast.success('Added to cart!');
+              toast.success("Added to cart!");
             }}
           >
             <CirclePlus />
             Add to Cart
           </Button>
           <Button
-            size='lg'
+            size="lg"
             className="flex-1 font-semibold"
             onClick={initiateBuyNow}
             disabled={loading}
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                {product.price === 0 ? 'Getting...' : 'Buying...'} <LoadingSpinner size="sm" />
+                {product.price === 0 ? "Getting..." : "Buying..."}{" "}
+                <LoadingSpinner size="sm" />
               </span>
             ) : (
               <>
                 <CreditCard />
-                {product.price === 0 ? 'Get Free' : 'Buy Now'}
+                {product.price === 0 ? "Get Free" : "Buy Now"}
               </>
             )}
           </Button>
@@ -419,46 +452,52 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             {checkoutSteps.map((step, index) => {
               const IconComponent = step.icon;
               const isLastStep = index === checkoutSteps.length - 1;
-              
+
               return (
                 <div key={index} className="relative">
                   <div className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-3">
                       <div className="flex-shrink-0 relative z-10">
-                        <IconComponent 
+                        <IconComponent
                           width={20}
                           color={
-                            stepStates[index] === 'completed' 
-                              ? '#16a34a' 
-                              : stepStates[index] === 'active'
-                              ? '#2563eb'
-                              : stepStates[index] === 'error'
-                              ? '#dc2626'
-                              : '#9ca3af'
+                            stepStates[index] === "completed"
+                              ? "#16a34a"
+                              : stepStates[index] === "active"
+                              ? "#2563eb"
+                              : stepStates[index] === "error"
+                              ? "#dc2626"
+                              : "#9ca3af"
                           }
                         />
                       </div>
-                      <p className={`text-sm font-medium ${
-                        stepStates[index] === 'completed' 
-                          ? 'text-green-600' 
-                          : stepStates[index] === 'active'
-                          ? 'text-blue-600'
-                          : stepStates[index] === 'error'
-                          ? 'text-red-600'
-                          : 'text-gray-500'
-                      }`}>
+                      <p
+                        className={`text-sm font-medium ${
+                          stepStates[index] === "completed"
+                            ? "text-green-600"
+                            : stepStates[index] === "active"
+                            ? "text-blue-600"
+                            : stepStates[index] === "error"
+                            ? "text-red-600"
+                            : "text-gray-500"
+                        }`}
+                      >
                         {step.text}
                       </p>
                     </div>
-                    
+
                     <div className="flex-shrink-0">
-                      {stepStates[index] === 'completed' ? (
+                      {stepStates[index] === "completed" ? (
                         <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                           <Check size={12} className="text-white" />
                         </div>
-                      ) : stepStates[index] === 'active' ? (
-                        <LoadingSpinner size="sm" color="primary" className="w-5 h-5" />
-                      ) : stepStates[index] === 'error' ? (
+                      ) : stepStates[index] === "active" ? (
+                        <LoadingSpinner
+                          size="sm"
+                          color="primary"
+                          className="w-5 h-5"
+                        />
+                      ) : stepStates[index] === "error" ? (
                         <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
                           <span className="text-white text-xs">✕</span>
                         </div>
@@ -467,7 +506,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Vertical connector line */}
                   {!isLastStep && (
                     <div className="absolute left-2.5 top-8 w-0.5 h-6 bg-gradient-to-b from-gray-300 to-gray-200"></div>
@@ -481,34 +520,37 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
         {/* Purchase buttons */}
         <div className="flex gap-3">
           <Button
-            size='lg'
+            size="lg"
             variant="outline"
-            className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+            className={`flex-1 font-semibold bg-white ${
+              isInCart ? "opacity-60 cursor-not-allowed" : ""
+            }`}
             onClick={() => {
               if (!isInCart) {
                 addToCart(product);
-                toast.success('Added to cart!');
+                toast.success("Added to cart!");
               }
             }}
             disabled={isInCart || loading}
           >
             <ShoppingCart />
-            {isInCart ? 'Added to Cart' : 'Add to Cart'}
+            {isInCart ? "Added to Cart" : "Add to Cart"}
           </Button>
           <Button
-            size='lg'
+            size="lg"
             className="flex-1 font-semibold"
             onClick={initiateBuyNow}
             disabled={loading}
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                {product.price === 0 ? 'Getting...' : 'Buying...'} <LoadingSpinner size="sm" />
+                {product.price === 0 ? "Getting..." : "Buying..."}{" "}
+                <LoadingSpinner size="sm" />
               </span>
             ) : (
               <>
                 <CreditCard />
-                {product.price === 0 ? 'Get Free' : 'Buy Now'}
+                {product.price === 0 ? "Get Free" : "Buy Now"}
               </>
             )}
           </Button>
@@ -533,7 +575,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
         {data.isCreator && (
           <div className="space-y-2">
             <Button
-              size='lg'
+              size="lg"
               variant="destructive"
               className="w-full font-semibold"
               onClick={handleDeleteClick}
@@ -551,7 +593,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             {data.downloadUrls && data.downloadUrls.length > 0 && (
               <div className="space-y-2">
                 <Button
-                  size='lg'
+                  size="lg"
                   className="w-full font-semibold"
                   onClick={handleDownloadAll}
                   disabled={isDownloaded || isGeneratingZip}
@@ -569,7 +611,10 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                   ) : (
                     <>
                       <Download className="mr-2 h-4 w-4" />
-                      Download {data.downloadUrls && data.downloadUrls.length > 1 ? 'All (Zip)' : ''}
+                      Download{" "}
+                      {data.downloadUrls && data.downloadUrls.length > 1
+                        ? "All (Zip)"
+                        : ""}
                     </>
                   )}
                 </Button>
@@ -584,10 +629,12 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                   return (
                     <Button
                       key={index}
-                      size='lg'
+                      size="lg"
                       variant="default"
                       className="w-full font-semibold rounded-xl capitalize"
-                      onClick={() => handleExternalLink(link.url, link.name, index)}
+                      onClick={() =>
+                        handleExternalLink(link.url, link.name, index)
+                      }
                     >
                       {isCopied ? (
                         <>
@@ -611,7 +658,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
             )}
           </>
         )}
-        
+
         {/* Delete Confirmation Modal */}
         <DeleteConfirmationModal
           isOpen={showDeleteConfirm}
@@ -627,7 +674,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
     );
   }
 
-  // User doesn't have access - show purchase options
+  // Main render
   return (
     <div className="space-y-3">
       {/* Checkout Steps */}
@@ -636,46 +683,52 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
           {checkoutSteps.map((step, index) => {
             const IconComponent = step.icon;
             const isLastStep = index === checkoutSteps.length - 1;
-            
+
             return (
               <div key={index} className="relative">
                 <div className="flex items-center justify-between py-3">
                   <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 relative z-10">
-                      <IconComponent 
+                      <IconComponent
                         width={20}
                         color={
-                          stepStates[index] === 'completed' 
-                            ? '#16a34a' 
-                            : stepStates[index] === 'active'
-                            ? '#2563eb'
-                            : stepStates[index] === 'error'
-                            ? '#dc2626'
-                            : '#9ca3af'
+                          stepStates[index] === "completed"
+                            ? "#16a34a"
+                            : stepStates[index] === "active"
+                            ? "#2563eb"
+                            : stepStates[index] === "error"
+                            ? "#dc2626"
+                            : "#9ca3af"
                         }
                       />
                     </div>
-                    <p className={`text-sm font-medium ${
-                      stepStates[index] === 'completed' 
-                        ? 'text-green-600' 
-                        : stepStates[index] === 'active'
-                        ? 'text-blue-600'
-                        : stepStates[index] === 'error'
-                        ? 'text-red-600'
-                        : 'text-gray-500'
-                    }`}>
+                    <p
+                      className={`text-sm font-medium ${
+                        stepStates[index] === "completed"
+                          ? "text-green-600"
+                          : stepStates[index] === "active"
+                          ? "text-blue-600"
+                          : stepStates[index] === "error"
+                          ? "text-red-600"
+                          : "text-gray-500"
+                      }`}
+                    >
                       {step.text}
                     </p>
                   </div>
-                  
+
                   <div className="flex-shrink-0">
-                    {stepStates[index] === 'completed' ? (
+                    {stepStates[index] === "completed" ? (
                       <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
                         <Check size={12} className="text-white" />
                       </div>
-                    ) : stepStates[index] === 'active' ? (
-                      <LoadingSpinner size="sm" color="primary" className="w-5 h-5" />
-                    ) : stepStates[index] === 'error' ? (
+                    ) : stepStates[index] === "active" ? (
+                      <LoadingSpinner
+                        size="sm"
+                        color="primary"
+                        className="w-5 h-5"
+                      />
+                    ) : stepStates[index] === "error" ? (
                       <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
                         <span className="text-white text-xs">✕</span>
                       </div>
@@ -684,7 +737,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
                     )}
                   </div>
                 </div>
-                
+
                 {/* Vertical connector line */}
                 {!isLastStep && (
                   <div className="absolute left-2.5 top-8 w-0.5 h-6 bg-gradient-to-b from-gray-300 to-gray-200"></div>
@@ -698,34 +751,37 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({ product
       {/* Purchase buttons */}
       <div className="flex gap-3">
         <Button
-          size='lg'
+          size="lg"
           variant="outline"
-          className={`flex-1 font-semibold bg-white ${isInCart ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex-1 font-semibold bg-white ${
+            isInCart ? "opacity-60 cursor-not-allowed" : ""
+          }`}
           onClick={() => {
             if (!isInCart) {
               addToCart(product);
-              toast.success('Added to cart!');
+              toast.success("Added to cart!");
             }
           }}
           disabled={isInCart || loading}
         >
           <ShoppingCart />
-          {isInCart ? 'Added to Cart' : 'Add to Cart'}
+          {isInCart ? "Added to Cart" : "Add to Cart"}
         </Button>
         <Button
-          size='lg'
+          size="lg"
           className="flex-1 font-semibold"
           onClick={initiateBuyNow}
           disabled={loading}
         >
           {loading ? (
             <span className="flex items-center gap-2">
-              {product.price === 0 ? 'Getting...' : 'Buying...'} <LoadingSpinner size="sm" />
+              {product.price === 0 ? "Getting..." : "Buying..."}{" "}
+              <LoadingSpinner size="sm" />
             </span>
           ) : (
             <>
               <CreditCard />
-              {product.price === 0 ? 'Get Free' : 'Buy Now'}
+              {product.price === 0 ? "Get Free" : "Buy Now"}
             </>
           )}
         </Button>

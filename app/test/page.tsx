@@ -1,19 +1,27 @@
 "use client";
 
+// 1. React imports
+import { useState, useCallback, useEffect } from "react";
+
+// 2. Third-party imports
 import { usePrivy } from "@privy-io/react-auth";
+import { useAccount } from "wagmi";
+
+// 3. Internal imports (absolute paths)
+import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   useAuthenticatedAPI,
   useAuthenticatedFetch,
 } from "@/lib/hooks/use-authenticated-fetch";
-import { useState, useCallback, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useAccount, useSendTransaction } from "wagmi";
 import {
   FARFIELD_CONTRACT_ADDRESS,
   usdcContract,
   usdcUtils,
+  transactionBatcher,
+  sendCallsUtils,
 } from "@/lib/blockchain";
+import { wagmiConfig } from "@/config";
 
 interface TestResult {
   endpoint: string;
@@ -57,9 +65,12 @@ interface ProductFormData {
 }
 
 export default function TestPage() {
+  // Hooks at the top
   const { ready, authenticated, login, logout, user } = usePrivy();
   const { get, post, put, delete: del } = useAuthenticatedAPI();
   const { authenticatedFetch } = useAuthenticatedFetch();
+  const { address, isConnected } = useAccount();
+
   const [results, setResults] = useState<TestResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
@@ -67,8 +78,6 @@ export default function TestPage() {
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [showRatingForm, setShowRatingForm] = useState(false);
-  const { address, isConnected } = useAccount();
-  const { sendTransactionAsync } = useSendTransaction();
   const [autopublish, setAutopublish] = useState(false);
 
   // Form data states
@@ -175,50 +184,50 @@ export default function TestPage() {
     return manualProductId.trim() || createdProductId;
   };
 
-  const addResult = (result: TestResult) => {
+  // Event handlers
+  const addResult = useCallback((result: TestResult) => {
     setResults((prev) => [...prev, result]);
-  };
+  }, []);
 
-  const clearResults = () => {
+  const clearResults = useCallback(() => {
     setResults([]);
     setCreatedProductId(null);
-  };
+  }, []);
 
-  const runTest = async (
-    name: string,
-    testFn: () => Promise<any>,
-    description?: string
-  ) => {
-    const startTime = Date.now();
-    addResult({ endpoint: name, status: "pending" });
+  const runTest = useCallback(
+    async (name: string, testFn: () => Promise<any>, description?: string) => {
+      const startTime = Date.now();
+      addResult({ endpoint: name, status: "pending" });
 
-    try {
-      const data = await testFn();
-      const duration = Date.now() - startTime;
+      try {
+        const data = await testFn();
+        const duration = Date.now() - startTime;
 
-      setResults((prev) =>
-        prev.map((r) =>
-          r.endpoint === name && r.status === "pending"
-            ? { ...r, status: "success", data, duration }
-            : r
-        )
-      );
+        setResults((prev) =>
+          prev.map((r) =>
+            r.endpoint === name && r.status === "pending"
+              ? { ...r, status: "success", data, duration }
+              : r
+          )
+        );
 
-      return data;
-    } catch (error: any) {
-      const duration = Date.now() - startTime;
+        return data;
+      } catch (error: any) {
+        const duration = Date.now() - startTime;
 
-      setResults((prev) =>
-        prev.map((r) =>
-          r.endpoint === name && r.status === "pending"
-            ? { ...r, status: "error", error: error.message, duration }
-            : r
-        )
-      );
+        setResults((prev) =>
+          prev.map((r) =>
+            r.endpoint === name && r.status === "pending"
+              ? { ...r, status: "error", error: error.message, duration }
+              : r
+          )
+        );
 
-      throw error;
-    }
-  };
+        throw error;
+      }
+    },
+    [addResult]
+  );
 
   // ========== USER API TESTS (EXISTING) ==========
   const testGetMe = useCallback(
@@ -828,20 +837,31 @@ export default function TestPage() {
   const executeBuyTxs = async () => {
     setBuyError(null);
     setBuyStep("signing");
-    await runBuyStep("wallet.sendTransaction (purchase)", async () => {
-      let lastTxHash = null;
-      for (const tx of buyTxs) {
-        const hash = await sendTransactionAsync({
-          to: tx.to,
-          data: tx.data,
-          value: BigInt(0),
-          chainId: 84532,
-        });
-        lastTxHash = hash;
-      }
-      setBuyFinalTxHash(lastTxHash);
+    await runBuyStep("sendCalls (batched purchase)", async () => {
+      // Convert transactions to sendCalls format
+      const calls = transactionBatcher.generateCallsFromTransactions(buyTxs);
+
+      // Execute batched calls
+      const result = await sendCallsUtils.executeBatchedCalls(
+        wagmiConfig,
+        calls,
+        84532 // Base Sepolia chain ID
+      );
+
+      // Wait for batch completion and get actual transaction hash
+      const batchResult = await sendCallsUtils.waitForBatchCompletion(
+        wagmiConfig,
+        result.id
+      );
+
+      // Get the purchase transaction hash (should be the last one in the batch)
+      const transactionHashes = batchResult.transactionHashes;
+      const purchaseTransactionHash =
+        transactionHashes[transactionHashes.length - 1];
+
+      setBuyFinalTxHash(purchaseTransactionHash);
       setBuyStep("confirming");
-      return { txHash: lastTxHash };
+      return { txHash: purchaseTransactionHash };
     });
   };
 
@@ -858,7 +878,7 @@ export default function TestPage() {
     });
   };
 
-  // Approve USDC for Farfield contract
+  // Approve USDC for Farfield contract using sendCalls
   const handleApproveUSDC = async () => {
     setApproveLoading(true);
     setApproveError(null);
@@ -870,22 +890,32 @@ export default function TestPage() {
         FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
         amount
       );
-      const hash = await sendTransactionAsync({
-        to: approvalTx.to as `0x${string}`,
-        data: approvalTx.data,
-        value: BigInt(0),
-        gas: BigInt(50000),
-      });
-      setApproveSuccess(hash);
+
+      // Use sendCalls for single approval transaction
+      const calls = [
+        {
+          to: approvalTx.to,
+          data: approvalTx.data,
+          value: BigInt(0),
+        },
+      ];
+
+      const result = await sendCallsUtils.executeBatchedCalls(
+        wagmiConfig,
+        calls,
+        84532 // Base Sepolia chain ID
+      );
+
+      setApproveSuccess(result.id);
       addResult({
-        endpoint: "wallet.sendTransaction (approve USDC)",
+        endpoint: "sendCalls (approve USDC)",
         status: "success",
-        data: { txHash: hash },
+        data: { batchId: result.id },
       });
     } catch (e: any) {
       setApproveError(e.message);
       addResult({
-        endpoint: "wallet.sendTransaction (approve USDC)",
+        endpoint: "sendCalls (approve USDC)",
         status: "error",
         error: e.message,
       });
@@ -1694,6 +1724,7 @@ export default function TestPage() {
     }));
   };
 
+  // Early returns for loading/error states
   if (!ready) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1721,6 +1752,7 @@ export default function TestPage() {
     );
   }
 
+  // Main render
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
