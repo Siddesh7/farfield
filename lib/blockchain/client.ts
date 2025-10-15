@@ -1,3 +1,7 @@
+// 1. React imports
+// (none needed for this utility file)
+
+// 2. Third-party imports
 import {
   createPublicClient,
   createWalletClient,
@@ -6,7 +10,13 @@ import {
   parseUnits,
   formatUnits,
 } from "viem";
+import { sendCalls, getCallsStatus } from "@wagmi/core";
 import { baseSepolia } from "viem/chains";
+
+// 3. Internal imports (absolute paths)
+// (none needed for this utility file)
+
+// 4. Relative imports
 import {
   BASE_RPC_URL,
   FARFIELD_CONTRACT_ADDRESS,
@@ -168,6 +178,203 @@ export const usdcContract = {
       };
     } catch (error) {
       throw new Error(`Failed to generate approval transaction: ${error}`);
+    }
+  },
+};
+
+// Transaction batching utilities for sendCalls
+export const transactionBatcher = {
+  // Generate batched approval + purchase calls
+  generatePurchaseBatch(
+    approvalAmount: bigint,
+    purchaseId: string,
+    productPrices: bigint[],
+    sellerAddresses: `0x${string}`[]
+  ) {
+    try {
+      const approvalTx = usdcContract.generateApprovalTransaction(
+        FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
+        approvalAmount
+      );
+
+      const purchaseTx = farfieldContract.generatePurchaseTransaction(
+        purchaseId,
+        productPrices,
+        sellerAddresses
+      );
+
+      return [
+        {
+          to: approvalTx.to,
+          data: approvalTx.data,
+          value: BigInt(0),
+        },
+        {
+          to: purchaseTx.to,
+          data: purchaseTx.data,
+          value: BigInt(0),
+        },
+      ];
+    } catch (error) {
+      throw new Error(`Failed to generate purchase batch: ${error}`);
+    }
+  },
+
+  // Generate calls from transaction array (for API responses)
+  generateCallsFromTransactions(transactions: any[]) {
+    try {
+      return transactions.map((tx) => ({
+        to: tx.to as `0x${string}`,
+        data: tx.data as `0x${string}`,
+        value: BigInt(tx.value || 0),
+      }));
+    } catch (error) {
+      throw new Error(`Failed to generate calls from transactions: ${error}`);
+    }
+  },
+
+  // Check if approval is needed and generate appropriate batch
+  async generateConditionalBatch(
+    userAddress: `0x${string}`,
+    requiredAmount: bigint,
+    purchaseId: string,
+    productPrices: bigint[],
+    sellerAddresses: `0x${string}`[]
+  ) {
+    try {
+      const currentAllowance = await usdcContract.getAllowance(
+        userAddress,
+        FARFIELD_CONTRACT_ADDRESS as `0x${string}`
+      );
+
+      const purchaseTx = farfieldContract.generatePurchaseTransaction(
+        purchaseId,
+        productPrices,
+        sellerAddresses
+      );
+
+      // If allowance is sufficient, only return purchase transaction
+      if (currentAllowance >= requiredAmount) {
+        return [
+          {
+            to: purchaseTx.to,
+            data: purchaseTx.data,
+            value: BigInt(0),
+          },
+        ];
+      }
+
+      // Otherwise, return approval + purchase batch
+      return this.generatePurchaseBatch(
+        requiredAmount,
+        purchaseId,
+        productPrices,
+        sellerAddresses
+      );
+    } catch (error) {
+      throw new Error(`Failed to generate conditional batch: ${error}`);
+    }
+  },
+};
+
+// sendCalls execution utilities
+export const sendCallsUtils = {
+  // Execute batched calls with proper error handling
+  async executeBatchedCalls(
+    config: any,
+    calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[],
+    chainId: number
+  ) {
+    try {
+      const result = await sendCalls(config, {
+        calls,
+        chainId,
+      });
+      return result;
+    } catch (error) {
+      throw new Error(`Failed to execute batched calls: ${error}`);
+    }
+  },
+
+  // Get transaction hashes from batch ID
+  async getTransactionHashesFromBatch(config: any, batchId: string) {
+    try {
+      const status = await getCallsStatus(config, { id: batchId });
+
+      if (status.status === "pending") {
+        throw new Error("Batch is still pending");
+      }
+
+      if (status.status === "failure") {
+        throw new Error("Batch execution failed");
+      }
+
+      // Extract transaction hashes from receipts
+      const transactionHashes =
+        status.receipts?.map((receipt) => receipt.transactionHash) || [];
+
+      return {
+        status: status.status,
+        transactionHashes,
+        receipts: status.receipts,
+      };
+    } catch (error) {
+      throw new Error(`Failed to get transaction hashes from batch: ${error}`);
+    }
+  },
+
+  // Wait for batch completion and get transaction hashes
+  async waitForBatchCompletion(
+    config: any,
+    batchId: string,
+    maxAttempts: number = 30,
+    intervalMs: number = 2000
+  ) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const result = await this.getTransactionHashesFromBatch(
+          config,
+          batchId
+        );
+        if (result.status === "success") {
+          return result;
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("pending")) {
+          // Still pending, wait and retry
+          await new Promise((resolve) => setTimeout(resolve, intervalMs));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error("Batch completion timeout");
+  },
+
+  // Execute purchase flow with automatic batching
+  async executePurchaseFlow(
+    config: any,
+    purchaseData: {
+      purchaseId: string;
+      productPrices: bigint[];
+      sellerAddresses: `0x${string}`[];
+      requiredAmount: bigint;
+    },
+    userAddress: `0x${string}`,
+    chainId: number
+  ) {
+    try {
+      const calls = await transactionBatcher.generateConditionalBatch(
+        userAddress,
+        purchaseData.requiredAmount,
+        purchaseData.purchaseId,
+        purchaseData.productPrices,
+        purchaseData.sellerAddresses
+      );
+
+      return await this.executeBatchedCalls(config, calls, chainId);
+    } catch (error) {
+      throw new Error(`Failed to execute purchase flow: ${error}`);
     }
   },
 };

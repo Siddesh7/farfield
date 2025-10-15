@@ -6,6 +6,7 @@ import {
   farfieldContract,
   usdcUtils,
   usdcContract,
+  transactionBatcher,
 } from "@/lib/blockchain/client";
 import { FARFIELD_CONTRACT_ADDRESS } from "@/lib/blockchain/constants";
 import { nanoid } from "nanoid";
@@ -138,20 +139,42 @@ async function initiatePurchaseHandler(
     expiresAt: new Date(Date.now() + PURCHASE_EXPIRY_MINUTES * 60 * 1000),
   });
   await purchase.save();
-  // Generate transaction payloads
+
+  // Generate batched transaction payloads (approval + purchase)
+  const totalAmount = costBreakdown.totalUserPays;
+  const transactions = [];
+
+  // Always include approval transaction for sendCalls batching
+  // The frontend will handle conditional execution based on current allowance
+  if (totalAmount > 0) {
+    const approvalTx = usdcContract.generateApprovalTransaction(
+      FARFIELD_CONTRACT_ADDRESS as `0x${string}`,
+      totalAmount
+    );
+
+    transactions.push({
+      type: "approval",
+      description: "Approve USDC spending",
+      to: approvalTx.to,
+      data: approvalTx.data,
+      value: "0x0",
+      gas: "50000",
+    });
+  }
+
+  // Add purchase transaction
   const purchaseTx = farfieldContract.generatePurchaseTransaction(
     purchaseId,
     productPrices,
     sellerAddresses
   );
-  const transactions = [
-    {
-      type: "purchase",
-      description: "Process purchase",
-      ...purchaseTx,
-      gas: "200000",
-    },
-  ];
+
+  transactions.push({
+    type: "purchase",
+    description: "Process purchase",
+    ...purchaseTx,
+    gas: "200000",
+  });
   // Prepare response data
   const responseData = {
     purchaseId,
