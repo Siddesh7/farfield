@@ -9,6 +9,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { GlobalContextProvider } from "@/context/global-context";
 import ServiceWorkerRegister from "@/components/common/service-worker-register";
 import { wagmiConfig } from "@/config";
+import { base, baseSepolia } from "viem/chains";
 
 // Mini App Context
 const MiniAppContext = createContext<{
@@ -114,6 +115,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID || ""}
             config={{
               loginMethods: ["farcaster", "wallet"],
+              supportedChains: [base, baseSepolia],
             }}
           >
             <QueryClientProvider client={queryClient}>

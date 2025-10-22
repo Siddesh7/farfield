@@ -10,7 +10,7 @@ import {
   Trash2,
   Check,
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, useSwitchChain } from "wagmi";
 import { toast } from "sonner";
 import JSZip from "jszip";
 
@@ -61,7 +61,8 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({
   } = useGlobalContext();
   const { authenticatedFetch } = useAuthenticatedFetch();
   const { post } = useAuthenticatedAPI();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chainId } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const deleteProductMutation = useDeleteProduct();
   const purchaseConfirmMutation = usePurchaseConfirm();
   const { actions: sdkActions } = useMiniApp();
@@ -143,6 +144,22 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({
       setCurrentStep(0);
       updateStepState(0, "active");
 
+      // Check if we need to switch chains
+      const targetChainId = CHAIN_ID;
+      if (chainId !== targetChainId) {
+        try {
+          await switchChainAsync({ chainId: targetChainId });
+          // Wait a moment for the chain switch to complete
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (switchError: any) {
+          throw new Error(
+            `Please switch to ${
+              targetChainId === 8453 ? "Base" : "Base Sepolia"
+            } network to complete the purchase. ${switchError?.message || ""}`
+          );
+        }
+      }
+
       // Convert transactions to sendCalls format
       const calls = transactionBatcher.generateCallsFromTransactions(
         data.transactions
@@ -152,7 +169,7 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({
       const result = await sendCallsUtils.executeBatchedCalls(
         wagmiConfig,
         calls,
-        CHAIN_ID
+        targetChainId
       );
 
       // Get the batch ID from sendCalls result
@@ -227,6 +244,8 @@ const ProductAccessComponent: React.FC<ProductAccessComponentProps> = ({
   }, [
     isConnected,
     address,
+    chainId,
+    switchChainAsync,
     post,
     product.id,
     product.price,
